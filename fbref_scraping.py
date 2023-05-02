@@ -2,12 +2,14 @@ import requests
 import pandas as pd
 from bs4 import BeautifulSoup 
 import time
+import warnings
+import os
 
 
 class Fbref:
     """ Implements all the functions required to scrape match- (and other) data from fbref.com"""
     # constructor
-    def __init__(self, min_request_delay=3):
+    def __init__(self, min_request_delay=3.1, output_dir=r'data/scraped/fbref'):
         # This table contains scraping-relevant info for every data type available on fbref. 
         # Storing it here makes it possible to write the scraping procedure as loop over all data types later instead of dealing with them individually.
         self.MATCH_DATA_TYPES = pd.DataFrame({
@@ -20,6 +22,7 @@ class Fbref:
         
         self.min_request_delay = min_request_delay # fbref allows 1 request every 3 seconds (https://www.sports-reference.com/bot-traffic.html)
         self.last_request_time = None
+        self.output_dir = output_dir
 
     def get_squad_match_data_df(self, squad_id, league_id, season_start_year, print_logs=False):
         """Returns a dataframe containing all match data for a given squad, league and season."""
@@ -34,7 +37,7 @@ class Fbref:
             url = f"https://fbref.com/en/squads/{squad_id}/{season_str}/matchlogs/c{league_id}/{data_type['url_string']}"
 
             # retrieve data from url
-            response = self._get_response(url, print_logs=print_logs)
+            response = self._make_request(url, print_logs=print_logs)
             
             # read in table from html with pandas
             table_df = pd.read_html(response.text, match=data_type['filter_text'])[0]
@@ -85,15 +88,55 @@ class Fbref:
             print('Dataframe sizes:')
             for i, df in enumerate(df_list):
                 print(f"{self.MATCH_DATA_TYPES.iloc[i]['filter_text']} df has shape: {df.shape}")
-            raise Exception("Error during concatenation of dataframes.")
+            raise Exception("Error during (vertical) concatenation of dataframes.")
         
         return result_df
     
-    # to do
-    def scrape_league_season(self, league_id, season_start_year, return_df=True, save_csv=False, csv_path=None, print_logs=False):
-        """Scrapes all match data for a given league and season. Returns a single dataframe and/or saves to csv file."""
+    def get_league_match_data_df(self, league_id, season_start_year, return_df=True, save_csv=False, print_logs=False):
+        """Scrapes all match data for a given league and season. Returns results in a single dataframe and/or saves to csv file. Caution: csv path must exist already!"""
+        
+        # get squad ids
+        squad_id_df = self.get_squad_id_df(league_id, season_start_year)
+        if print_logs:
+            print(f"Retrieved {squad_id_df.shape[0]} squad_ids for {league_id=}, {season_start_year=}.")
 
-    # to do
+        # iterate over squads
+        df_list = []
+        for i, squad_id in squad_id_df.iterrows():
+            if print_logs:
+                print(f"Starting data collection for squad {i+1}/{len(squad_id_df)}: {squad_id['squad_name']} (id: {squad_id['squad_id']})")
+            data_df = self.get_squad_match_data_df(squad_id['squad_id'], league_id, season_start_year, print_logs=print_logs)
+            df_list.append(data_df)
+
+        # before concatenating, perform some checks
+        # column check: must match exactly (note: maybe should also check against a final expected column count)
+        if not all([df_list[0].columns.equals(df.columns) for df in df_list]):
+            # print column counts for debugging
+            for i in enumerate(df_list):
+                print(f"{df_list[i].shape[1]} columns in data df for {squad_id['squad_name']} (id: {squad_id['squad_id']}).")
+            raise Exception("Discrepancy in column count (or names) between squad dfs prevents horizontal concatenation!")
+        # row count check: slight differences could be due to league rules -> throw warning 
+        if not all([df_list[0].shape[0]==df.shape[0] for df in df_list]):
+            # print row counts for debugging
+            for i in enumerate(df_list):
+                print(f"{df_list[i].shape[0]} rows in data df for {squad_id['squad_name']} (id: {squad_id['squad_id']}).")
+            warnings.warn("Discrepancy in match count between squads. Check if error or explained by league rules.")
+
+        # concatenate
+        result_df = pd.concat(df_list, axis=0, ignore_index=True)
+
+        # save to csv & return df (if requested)
+        try:
+            if save_csv:
+                filename = f"league{league_id}_ssy{season_start_year}_cols{result_df.shape[1]}_rows{result_df.shape[0]}.csv"
+                path = os.path.join(self.output_dir, filename)
+                result_df.to_csv(path, sep=';', index=False) # some columns can contain commas -> semicolon as sep
+        except:
+            raise Exception(f"Error during saving in '{path}'. Check if output dir '{self.output_dir}' exists.")
+        finally:
+            if return_df:
+                return result_df
+
     def get_squad_id_df(self, league_id, season_start_year, print_logs=False):
         """Returns a df of fbref squad ids for a given league and season."""
 
