@@ -1,6 +1,6 @@
 import requests
 import pandas as pd
-import bs4
+from bs4 import BeautifulSoup 
 import time
 
 
@@ -103,9 +103,40 @@ class Fbref:
     def scrape_league_season(self, league_id, season_start_year, return_df=True, save_csv=False, csv_path=None, print_logs=False):
         """Scrapes all match data for a given league and season. Returns a single dataframe and/or saves to csv file."""
 
-    # to do 
-    def get_squad_ids(league_id, season_start_year):
+    # to do
+    def get_squad_ids(self, league_id, season_start_year):
         """Returns a list of fbref squad ids for a given league and season."""
+        
+        year_range = f"{season_start_year}-{season_start_year+1}"  # transforms start_year to needed url-structure
+        base_url = "https://fbref.com/en/comps/"
+        url = base_url + str(league_id) + "/" + year_range + "/" + year_range + "/"    # build the complete url to request from
+        data = requests.get(url)    # send a GET request for the complete url an store the response
+    
+        soup = BeautifulSoup(data.text, 'html.parser')
+        standings_table = soup.select('table.stats_table')[0]
+        # create a BeatifulSoup object to parse the html and find all standings tables in the html
+    
+        links = standings_table.find_all('a')
+        links = [l.get("href") for l in links]
+        links = [l for l in links if '/squads/' in l] 
+        team_urls = [f"https://fbref.com{l}" for l in links]  
+        # filter the links that include the squad data and create a lists with the complete urls
+        
+        squad_index = {}    # initialize an empty dictionary to store team_name and squad_id
+
+        for team_url in team_urls:
+            parts = team_url.split('/')
+            squad_id = parts[-3]
+            team_name = parts[-1]
+            team_name = team_name[:-6]
+            squad_index[team_url] = {'team_name': team_name, 'squad_id': squad_id}
+            # for every team_url extract team_name and squad_id and add them to the squad_index dictionary
+
+        df = pd.DataFrame.from_dict(squad_index).T
+        result_df = df.reset_index(drop=True)
+        # create a DataFrame from the squad_index and reset the index
+
+        return result_df # return DataFrame
 
     # helper function
     def _implement_delay(self):
@@ -119,7 +150,7 @@ class Fbref:
     def _get_ids_from_matchlogs_table(self, response):
         """Returns lists containing the fbref match ids and opponent squad ids from the table on a matchlogs page"""
         # find table with bs4
-        soup = bs4.BeautifulSoup(response.text, 'html.parser')
+        soup = BeautifulSoup(response.text, 'html.parser')
         soup_table = soup.find('table', {'id': 'matchlogs_for'}) # table id is always 'matchlogs_for'
 
         match_ids, opponent_ids = [], []
