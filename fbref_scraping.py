@@ -33,18 +33,8 @@ class Fbref:
             season_str = f'{season_start_year}-{season_start_year+1}'
             url = f"https://fbref.com/en/squads/{squad_id}/{season_str}/matchlogs/c{league_id}/{data_type['url_string']}"
 
-            # implement delay (if necessary)
-            if self.last_request_time is not None:
-                self._implement_delay() 
-
-            if print_logs:
-                print(f"Retrieving data from {url}")
-            self.last_request_time = time.time()
-
-            # retrieve data 
-            response = requests.get(url) # 
-            if response.status_code != 200: # 200 -> OK
-                raise Exception(f"Got response status code {response.status_code} instead of 200.")
+            # retrieve data from url
+            response = self._get_response(url, print_logs=print_logs)
             
             # read in table from html with pandas
             table_df = pd.read_html(response.text, match=data_type['filter_text'])[0]
@@ -104,49 +94,57 @@ class Fbref:
         """Scrapes all match data for a given league and season. Returns a single dataframe and/or saves to csv file."""
 
     # to do
-    def get_squad_ids(self, league_id, season_start_year):
-        """Returns a list of fbref squad ids for a given league and season."""
+    def get_squad_id_df(self, league_id, season_start_year, print_logs=False):
+        """Returns a df of fbref squad ids for a given league and season."""
+
+        # build url
+        season_str = f"{season_start_year}-{season_start_year+1}"  # transforms start_year to needed url-structure
+        url = f"https://fbref.com/en/comps/{league_id}/{season_str}"
         
-        year_range = f"{season_start_year}-{season_start_year+1}"  # transforms start_year to needed url-structure
-        base_url = "https://fbref.com/en/comps/"
-        url = base_url + str(league_id) + "/" + year_range + "/" + year_range + "/"    # build the complete url to request from
-        data = requests.get(url)    # send a GET request for the complete url an store the response
+        # make request
+        response = self._make_request(url, print_logs=print_logs)
     
-        soup = BeautifulSoup(data.text, 'html.parser')
-        standings_table = soup.select('table.stats_table')[0]
-        # create a BeatifulSoup object to parse the html and find all standings tables in the html
-    
+        # find relevant table
+        soup = BeautifulSoup(response.text, 'html.parser')
+        standings_table = soup.select('table.stats_table')[0] # relevant table is always first on the page
+
+        # extract relevant links from table
         links = standings_table.find_all('a')
         links = [l.get("href") for l in links]
         links = [l for l in links if '/squads/' in l] 
-        team_urls = [f"https://fbref.com{l}" for l in links]  
-        # filter the links that include the squad data and create a lists with the complete urls
+        # links should now have the form: "/en/squads/{squad_id}/{season_str}/{squad_name in regular characters and separated by '-'}-Stats"
         
-        squad_index = {}    # initialize an empty dictionary to store team_name and squad_id
+        # extract squad ids and names from links
+        squads = [] 
+        for link in links:
+            parts = link.split('/')
+            squad_id = parts[-3] # extract squad id
+            team_name = parts[-1] # extract team name (still has '-Stats' at the end)
+            team_name = team_name[:-6].replace('-', ' ') # cut off '-Stats' and replace '-'
+            squads.append((squad_id, team_name))
 
-        for team_url in team_urls:
-            parts = team_url.split('/')
-            squad_id = parts[-3]
-            team_name = parts[-1]
-            team_name = team_name[:-6]
-            squad_index[team_url] = {'team_name': team_name, 'squad_id': squad_id}
-            # for every team_url extract team_name and squad_id and add them to the squad_index dictionary
+        # return as df
+        result_df = pd.DataFrame(squads, columns=['squad_id', 'squad_name'])
+        return result_df 
 
-        df = pd.DataFrame.from_dict(squad_index).T
-        result_df = df.reset_index(drop=True)
-        # create a DataFrame from the squad_index and reset the index
-
-        return result_df # return DataFrame
-
-    # helper function
     def _implement_delay(self):
         """Implements delay between requests if necessary. Should be called right before a request is made."""
-        current_time = time.time()
-        if current_time - self.last_request_time < self.min_request_delay:
-            time.sleep(self.min_request_delay - (current_time - self.last_request_time))
+        if self.last_request_time is not None:
+            current_time = time.time()
+            if current_time - self.last_request_time < self.min_request_delay:
+                time.sleep(self.min_request_delay - (current_time - self.last_request_time))
         self.last_request_time = time.time()
 
-    # helper function 
+    def _make_request(self, url, print_logs=False):
+        """Makes a request to a given url and returns the response. Handles delay and printing logs. Should always be used for requests."""
+        self._implement_delay()
+        if print_logs:
+            print(f"Retrieving data from {url}.")
+        response = requests.get(url)
+        if response.status_code != 200: # 200 -> OK
+            raise Exception(f"Got response status code {response.status_code} instead of 200.")
+        return response
+
     def _get_ids_from_matchlogs_table(self, response):
         """Returns lists containing the fbref match ids and opponent squad ids from the table on a matchlogs page"""
         # find table with bs4
