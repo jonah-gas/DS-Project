@@ -156,12 +156,13 @@ class Fbref:
         links = [l.get("href") for l in links]
         links = [l for l in links if '/squads/' in l] 
         # links should now have the form: "/en/squads/{squad_id}/{season_str}/{squad_name in regular characters and separated by '-'}-Stats"
-        
+        # caution: for most recent season the season_str part is missing!
+
         # extract squad ids and names from links
         squads = [] 
         for link in links:
             parts = link.split('/')
-            squad_id = parts[-3] # extract squad id
+            squad_id = parts[3] # extract squad id
             team_name = parts[-1] # extract team name (still has '-Stats' at the end)
             team_name = team_name[:-6].replace('-', ' ') # cut off '-Stats' and replace '-'
             squads.append((squad_id, team_name))
