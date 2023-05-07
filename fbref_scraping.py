@@ -96,7 +96,7 @@ class Fbref:
         """Scrapes all match data for a given league and season. Returns results in a single dataframe and/or saves to csv file. Caution: csv path must exist already!"""
         
         # get squad ids
-        squad_id_df = self.get_squad_id_df(league_id, season_start_year)
+        squad_id_df = self.get_squad_id_df(league_id, season_start_year, print_logs)
         if print_logs:
             print(f"Retrieved {squad_id_df.shape[0]} squad_ids for {league_id=}, {season_start_year=}.")
 
