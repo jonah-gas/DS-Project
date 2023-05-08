@@ -41,6 +41,14 @@ class Fbref:
             
             # read in table from html with pandas
             table_df = pd.read_html(response.text, match=data_type['filter_text'])[0]
+
+            # special fix for when relegation playoffs are included
+            if table_df.shape[1] == data_type['n_expected_cols']+1:
+                # there is (likely) an extra column 'Comp' which we want to drop
+
+                table_df = table_df.drop(columns='Comp', level=(1 if table_df.columns.nlevels > 1 else None)) # will raise KeyError if 'Comp' is not in columns 
+
+            # error if col count is unexpected
             if table_df.shape[1] != data_type['n_expected_cols']: 
                 raise ValueError(f"Unexpected number of columns ({table_df.shape[1]}, exp: {data_type['n_expected_cols']}) in scraped table for data type: {data_type['filter_text']}")
             
@@ -48,6 +56,10 @@ class Fbref:
             if i != 0: # only if not Scores & Fixtures table
                 # drop first 9 columns, last column, and last row
                 table_df = table_df.iloc[:-1, 9:-1]
+            # sometimes empty separator rows are in the table and read in by pandas -> drop them (and print warning)
+            if table_df.dropna(how='all').shape[0] < table_df.shape[0]: # if there are rows with all NaNs
+                warnings.warn(f"All-NaN row(s) dropped from  {data_type['filter_text']} table for squad_id {squad_id}, league_id {league_id},  season_str {season_str}.")
+                table_df = table_df.dropna(axis=0, how='all')
                 
             # deal with multiindex problems (see fbref_match_scraping_showcase.ipynb for detailed explanations)
             if table_df.columns.nlevels == 2:
@@ -212,11 +224,14 @@ class Fbref:
 
                 # find match report column
                 td_match = row.find('td', {'data-stat': 'match_report'})
-                # extract link (has form: /en/matches/{match_id}/..)
-                match_report_link = td_match.find('a')['href']
-                # extract match id from link
-                match_id = match_report_link.split('/')[3]
-
+                try:
+                    # extract link (has form: /en/matches/{match_id}/..)
+                    match_report_link = td_match.find('a')['href']
+                    # extract match id from link
+                    match_id = match_report_link.split('/')[3]
+                except:
+                    match_id = ''
+                    warnings.warn(f"Could not extract match id from table. Possibly due to relegation matches (no link)?")
                 match_ids.append(match_id)
                 opponent_ids.append(opponent_squad_id)
         return match_ids, opponent_ids
