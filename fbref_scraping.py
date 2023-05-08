@@ -53,13 +53,13 @@ class Fbref:
                 raise ValueError(f"Unexpected number of columns ({table_df.shape[1]}, exp: {data_type['n_expected_cols']}) in scraped table for data type: {data_type['filter_text']}")
             
             # drop redundant columns and rows
-            if i != 0: # only if not Scores & Fixtures table
-                # drop first 9 columns, last column, and last row
-                table_df = table_df.iloc[:-1, 9:-1]
             # sometimes empty separator rows are in the table and read in by pandas -> drop them (and print warning)
             if table_df.dropna(how='all').shape[0] < table_df.shape[0]: # if there are rows with all NaNs
                 warnings.warn(f"All-NaN row(s) dropped from  {data_type['filter_text']} table for squad_id {squad_id}, league_id {league_id},  season_str {season_str}.")
                 table_df = table_df.dropna(axis=0, how='all')
+            if i != 0: # only if not Scores & Fixtures table
+                # drop first 9 columns, last column, and last row
+                table_df = table_df.iloc[:-1, 9:-1]
                 
             # deal with multiindex problems (see fbref_match_scraping_showcase.ipynb for detailed explanations)
             if table_df.columns.nlevels == 2:
