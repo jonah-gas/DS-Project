@@ -124,14 +124,14 @@ class Fbref:
         # column check: must match exactly (note: maybe should also check against a final expected column count)
         if not all([df_list[0].columns.equals(df.columns) for df in df_list]):
             # print column counts for debugging
-            for i in enumerate(df_list):
-                print(f"{df_list[i].shape[1]} columns in data df for {squad_id['squad_name']} (id: {squad_id['squad_id']}).")
+            for i, df in enumerate(df_list):
+                print(f"{df.shape[1]} columns in data df for {squad_id_df.iloc[i]['squad_name']} (id: {squad_id_df.iloc[i]['squad_id']}).")
             raise Exception("Discrepancy in column count (or names) between squad dfs prevents horizontal concatenation!")
         # row count check: slight differences could be due to league rules -> throw warning 
         if not all([df_list[0].shape[0]==df.shape[0] for df in df_list]):
             # print row counts for debugging
-            for i in enumerate(df_list):
-                print(f"{df_list[i].shape[0]} rows in data df for {squad_id['squad_name']} (id: {squad_id['squad_id']}).")
+            for i, df in enumerate(df_list):
+                print(f"{df.shape[0]} rows in data df for {squad_id_df.iloc[i]['squad_name']} (id: {squad_id_df.iloc[i]['squad_id']}).")
             warnings.warn("Discrepancy in match count between squads. Check if error or explained by league rules.")
 
         # concatenate
