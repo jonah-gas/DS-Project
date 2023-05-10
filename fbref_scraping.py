@@ -24,6 +24,61 @@ class Fbref:
         self.last_request_time = None
         self.output_dir = output_dir
 
+    def get_wages_df(self, league_id, season_start_year, print_logs=False):
+        """Returns a dataframe containing squad wage data for a given league and season"""
+        
+        # build url
+        season_str = f'{season_start_year}-{season_start_year+1}'
+        url = f"https://fbref.com/en/comps/{league_id}/{season_str}/wages/" # slash at the end is important!
+
+        # retrieve data from url
+        response = self._make_request(url, print_logs=print_logs)
+
+        # read in wages table
+        table_df = pd.read_html(response.text, match='Squad Wages')[0]
+
+        # check column count
+        if table_df.shape[1] != 6:
+            raise ValueError(f"Unexpected number of columns ({table_df.shape[1]}, exp: 6) in scraped wages table for league_id {league_id}, season_str {season_str}. Columns in table: {table_df.columns}")
+
+        # extract squad ids from links in table 
+        squad_ids = self._get_ids_from_wages_table(response)
+
+        # add squad ids
+        table_df['squad_id'] = squad_ids
+        # add season_str 
+        table_df['season_str'] = season_str
+        # drop Rank column (not needed)
+        table_df = table_df.drop(columns='Rk')
+        # rename columns to match db schema
+        table_df = table_df.rename(columns={'Squad': 'squad_name', 'Weekly Wages': 'weekly_wages', 'Annual Wages': 'annual_wages', '# Pl': 'n_players', '% Estimated': 'pct_estimated'})
+        # values are provided in two columns, three currencies each -> separate
+        for col in ['weekly_wages', 'annual_wages']:
+            # separate three currencies
+            eur, gbp, usd = [], [], []
+            for val in table_df[col].values:
+                c1, c2 = val.split(' (')
+                c2, c3 = c2.split(', ') 
+                # remove any whitespaces and closing brackets
+                c1, c2, c3 = [s.replace(' ', '').replace(')', '').replace(',', '') for s in [c1, c2, c3]]
+                # match depending on first character (indicates currency)
+                for c in [c1, c2, c3]:
+                    if c[0] == '€':
+                        eur.append(c[1:])
+                    elif c[0] == '£':
+                        gbp.append(c[1:])
+                    elif c[0] == '$':
+                        usd.append(c[1:])
+            # replace old column with three new ones
+            table_df = table_df.drop(columns=col)
+            table_df[f'{col}_eur'] = eur
+            table_df[f'{col}_gbp'] = gbp
+            table_df[f'{col}_usd'] = usd
+        return table_df
+
+
+        #return table_df
+
     def get_squad_match_data_df(self, squad_id, league_id, season_start_year, print_logs=False):
         """Returns a dataframe containing all match data for a given squad, league and season."""
 
@@ -235,3 +290,25 @@ class Fbref:
                 match_ids.append(match_id)
                 opponent_ids.append(opponent_squad_id)
         return match_ids, opponent_ids
+    
+    def _get_ids_from_wages_table(self, response):
+        """Returns lists containing the fbref squad ids from the table on a wages page"""
+        # find table with bs4
+        soup = BeautifulSoup(response.text, 'html.parser')
+        soup_table = soup.find('table', {'id': 'squad_wages'}) # table id is always 'matchlogs_for'
+
+        squad_ids = []
+        # iterate through table rows 
+        for row in soup_table.find_all('tr'):
+            # skip avoid non-data rows
+            if (row.find('th', {'class': 'poptip'}) is None and # no header row
+                row.find('th', {'class': 'over_header'}) is None and # no over header row
+                row.find('th', {'class': 'left iz'}) is None): # no bottom summary row
+                # find squads column
+                td_opp = row.find('td', {'data-stat': 'team'})
+                # extract link (has form: /en/squads/{squad_id}/...)
+                link = td_opp.find('a')['href']
+                # extract opponent squad id from link (has)
+                squad_id = link.split('/')[3]
+                squad_ids.append(squad_id)
+        return squad_ids
