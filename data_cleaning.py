@@ -6,7 +6,10 @@ Created on Wed May 10 15:58:07 2023
 """
 import pandas as pd
 
-class data_cleaning:
+class DataCleaning:
+    def __init__(self):
+        pass
+    
     def clean_raw_data(self, data_raw, fbref_matchdata_rawcleaning):
         """
         Cleans the raw data by dropping columns, removing rows with missing values, and renaming columns.
