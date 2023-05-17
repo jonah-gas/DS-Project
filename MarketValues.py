@@ -24,7 +24,7 @@ class MarketValues():
             currentYear = datetime.now().year
             seasons = range(datetime.now().year - self.season, datetime.now().year)
         else:
-            print("Please enter either a year in the format '%YYYY' or a timespan (should not go past 1992)")
+            print("Please enter either a year in the format '%YYYY' or a timespan in year (should not go past 1992 ie be smaller than 30)")
             
         find_clubs = pd.DataFrame(columns = ['season', 'club', 'club_id', 'link', 'liga', 'team_size'],
                           index=range(20 * len(seasons)))
@@ -70,13 +70,10 @@ class MarketValues():
         return self.clean_data(value)
     
     def get_single_player_value(self,name, club, date = None):
-        "Returns market value of player at specified date and overview in form of a dictionary"
+        "Returns market value of player at specified date. Enter date in dd.mm.yyyy format."
         name = name.replace(" ","").lower()
         club = club.replace(" ","").lower()
         self.name = name
-        
-        if name in self.player_collections.player_name.unique():
-            return self.clean_data(self.value_at_date(name, date))
         
         if date != None:
             date_to_year = datetime.strptime(date,'%d.%m.%Y')
@@ -84,6 +81,19 @@ class MarketValues():
                 year = date_to_year.year - 1
             else:
                 year = date_to_year.year
+        else:
+            date = datetime.now().date()
+            if date.month < 7:
+                year = date.year - 1
+            else:
+                year = date.year
+            date = datetime.strftime(date,'%d.%m.%Y')
+
+        #print(date)
+        #print(type(date))
+        
+        if name in self.player_collections.player_name.unique():
+            return self.clean_data(self.value_at_date(name, date))
         
         driver = webdriver.Chrome()
         player_season = pd.DataFrame(columns = ["season", "player_name", "player_id", "link", "market_worth"], 
@@ -123,13 +133,11 @@ class MarketValues():
         self.player_collections = pd.concat([self.player_collections, player_season])
         self.player_collections = self.player_collections.reset_index(drop = True)
         
-        if date == None:
-            date = datetime.now().date()
-            return self.clean_data(self.value_at_date(name, date))
-        else:
-            return self.clean_data(self.value_at_date(name, date))
+        
+        return self.clean_data(self.value_at_date(name, date))
             
-    def get_exact_team_value(self, date, team, club):
+    def get_exact_team_value(self, team, club, date = None):
+        "Returns team value at specified date. Team has to be a list containing the names of the player. Date has to be in dd.mm.yyyy format"
         team = list(map(lambda x: x.replace(" ","").lower(), team))
         club = club.replace(" ","").lower()
         
@@ -142,6 +150,14 @@ class MarketValues():
                 year = date_to_year.year - 1
             else:
                 year = date_to_year.year
+        else:
+            date = datetime.now().date()
+            if date.month < 7:
+                year = date.year - 1
+            else:
+                year = date.year
+            date = datetime.strftime(date,'%d.%m.%Y')
+           
                 
         driver = webdriver.Chrome()
         player_season = pd.DataFrame(columns = ["season", "player_name", "player_id", "link", "market_worth"], 
@@ -200,17 +216,21 @@ class MarketValues():
         
         
     def value_at_date(self, name, date):
+        "Return value of name at date"
         #print(name)
         #print(self.player_collections[self.player_collections.player_name == name].index)
         index, = self.player_collections[self.player_collections.player_name == name].index
         #print(self.player_collections.market_worth[index])
         dates = list(self.player_collections.market_worth[index][0].keys())
         items = [datetime.strptime(x,'%d.%m.%Y') for x in dates]
+        #print(date)
+        #print(type(date))
         pivot = datetime.strptime(date,'%d.%m.%Y')
         nearest = min(items, key=lambda x: abs(x - pivot)).strftime('%d.%m.%Y')
         return self.player_collections.market_worth[index][0][nearest]
     
     def clean_data(self, data):
+        "Convert data from string to float"
         splitted = data.replace(",",".").split()
         if 'Mio.' in splitted:
             data = float(splitted[0])*1e6
@@ -221,4 +241,5 @@ class MarketValues():
         return data
     
     def collected_player(self):
+        "Return dataframe with all collected players"
         return self.player_collections
