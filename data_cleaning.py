@@ -25,8 +25,8 @@ class DataCleaning:
         # Drop the columns from data_raw
         data_raw.drop(cols_to_drop, axis=1, inplace=True)
 
-        # Drop rows with missing values in the 'schedule_Result' column
-        data_raw.dropna(subset=['schedule_Result'], inplace=True)
+        # Drop rows with missing values in the 'schedule_xG' column, to delete games with incomplete information
+        data_raw.dropna(subset=['schedule_xG'], inplace=True)
 
         # Rename columns by removing "schedule" in the column names
         new_names = {}
