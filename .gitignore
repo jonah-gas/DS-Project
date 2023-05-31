@@ -1,0 +1,10 @@
+# db server credentials etc.
+/database_server/config/
+
+# compilation-related files (in any subfolders)
+__pycache__/
+*.pyc
+
+# folders only in my (JJ) personal repo
+/related/
+/archive/
