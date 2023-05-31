@@ -1,0 +1,105 @@
+Our database server will be hosted on a bwCloud instance. 
+The VM will run PostgreSQL xx.xx on Ubuntu v22.04.
+
+Before launching an instance we need to create an SSH key-pair.
+On windows: Using PuTTYgen
+    - save public key as .txt
+    - 'Conversions' -> 'Export OpenSSH key' -> save private key as .txt
+    - (also save private key as .ppk to be able to open in putty later)
+The generated key-pair can be added in the bwCloud portal.
+
+VM instance is set up via the bwCloud portal through the following steps:
+    1. In the portal, navigate to 'Images' -> Ubuntu 22.04 -> 'Launch'
+    2. Fill out the necessary info, select a flavour (with enough RAM!) and key-pair. Launch instance.
+
+To connect to our ubuntu VM from windows, we need the OpenSSH Client installed (and added to PATH).
+    - check if already installed in 'System Settings' -> 'Manage optional features' (or simply try 'ssh' in windows terminal).
+
+We can now connect to our VM from the windows terminal as follows:
+
+    ssh user@host -i path/to/private/key.txt
+
+    where user is 'ubuntu' and host is the bwCloud instance IP (or hostname)
+    ')
+
+The connection is closed via 'exit'.
+
+### IPv6-only workarounds
+
+There is currently a shortage of IPv4 addresses in the bwCloud, which is why new instances are IPv6-only.
+This leads to two problems for us: 
+	1) The default nameserver (127.0.0.53) does not work. 
+	   Any requests to fetch and install programs (or even system updates) from the linux command line fail because hostnames aren't resolved.
+
+	2) Connecting to the server via SSH is only possible from a client with an IPv6 address. Tübingen University and student dorm networks only seem to provide IPv4 addresses. 
+	
+Problem 1) can be solved by using Google's IPv6 DNS:
+	- see https://developers.google.com/speed/public-dns/docs/using
+	- a) temporary solution (works until reboot)
+		- add the google IPv6 DNS addresses to /etc/resolv.conf
+	- b) permanent solution
+		- same as a) but with additional steps, see method 2 here: https://linuxhint.com/update-resolv-conf-on-ubuntu/
+	- c) ideal solution (seems to work on bwCloud)
+		- use Google's DNS64 to also be able to access IPv4-only hosts
+		- https://developers.google.com/speed/public-dns/docs/dns64
+
+Problem 2)
+	- no simple solution, maybe connect through a VPN that is both ipv4- and ipv6-capable? 
+
+Edit: Luckily, the shared project created for us on the bwCloud allowed us to create an instance on a different network, which 
+ended up having both an IPv4 and IPv6 address.
+
+### PostgreSQL Installation & Setup
+
+1. Get updated package list
+	sudo apt-get update
+
+2. Download & install postgres from the command line: 
+	sudo apt install postgresql postgresql-contrib
+
+3. Make sure server listens to incoming connections:
+	- go in file /etc/postgresql/14/main/postgresql.conf
+	- change 
+		#listen_addresses = 'localhost'
+	  to 
+		#listen_addresses = '*'
+
+4. Allow all IPs to connect: 
+	- go in file /etc/postgresql/14/main/pg_hba.conf
+	- change IPv4 address to 0.0.0.0/0
+	- change IPv6 address to ::0/0
+
+5. Also choose authentication methods as required:
+	- go in file /etc/postgresql/14/main/pg_hba.conf
+	- set authentication methods to 'peer', 'md5', 'scram-sha-256' or 'trust'
+	- (we use 'scram-sha-256', i.e. an encrypted password)
+
+6. Make sure port 5432 (postgres default port) is allowed through firewall:
+	sudo ufw allow 5432/tcp
+
+	-note: on the public-uni-v4 and -v6 networks, port 5432 is on the list of disabled ports.
+	-> change the port used by postgres:
+		- go in file /etc/postgresql/14/main/postgresql.conf
+		- change 'port' from 5432 to another port (we use 5433)
+
+7. Restart postgres
+	sudo service postgresql restart
+
+
+### Connecting to postgres locally
+
+- Connecting locally (through remote SSH shell):
+	sudo -u username psql	<- gives "could not change directory..." message but works
+
+### Connecting to postgres remotely via psql
+
+- From windows terminal:
+	psql -h <IP_Address> -p <port_number> -d <database_name> -U <DB_username> 
+
+### Connecting via Python
+
+- using psycopg2, see connecting_from_python_demo.ipynb
+
+
+
+
