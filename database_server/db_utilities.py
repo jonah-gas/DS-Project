@@ -1,17 +1,22 @@
 import psycopg2
-import configparser
 import pandas as pd
 
-def read_config(path='config/db_config.ini'):
-    """Returns a ConfigParser object containing the database connection information. 
-        Arguments:
-            path:       path to the config file (default: 'config/db_config.ini')"""
+import configparser
+import os
+
+def read_config():
+    """Returns a ConfigParser object containing the database connection information.""" 
     
+    # it is important for this function to work if called from any directory
+    path_from_root = r'database_server\config\db_config.ini'
     config = configparser.ConfigParser()
-    config.read(path)
+    # get absolute path to this module file
+    module_dir = os.path.dirname(os.path.abspath(__file__))
+    config_path = os.path.join(module_dir, 'config', 'db_config.ini')
+    config.read(config_path)
     return config
 
-def get_conn(config=None, type='DB_client'):
+def get_conn(type='DB_client', config=None):
     """Returns a connection object to the database specified in the config file. 
         Arguments:
             type:       either 'DB_client' or 'DB_su' for client (default) or superuser connection, respectively
