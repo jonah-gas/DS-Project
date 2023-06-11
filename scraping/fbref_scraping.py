@@ -9,7 +9,7 @@ import os
 class Fbref:
     """ Implements all the functions required to scrape match- (and other) data from fbref.com"""
     # constructor
-    def __init__(self, min_request_delay=3.1, output_dir=r'data/scraped/fbref'):
+    def __init__(self, min_request_delay=3.1, output_dir=r'../data/scraped/fbref'):
         # This table contains scraping-relevant info for every data type available on fbref. 
         # Storing it here makes it possible to write the scraping procedure as loop over all data types later instead of dealing with them individually.
         self.MATCH_DATA_TYPES = pd.DataFrame({
@@ -22,9 +22,10 @@ class Fbref:
         
         self.min_request_delay = min_request_delay # fbref allows 1 request every 3 seconds (https://www.sports-reference.com/bot-traffic.html)
         self.last_request_time = None
-        self.output_dir = output_dir
+        self.match_dir =  os.path.join(output_dir, 'match')
+        self.wages_dir = os.path.join(output_dir, 'wages')
 
-    def get_wages_df(self, league_id, season_start_year, print_logs=False):
+    def get_wages_df(self, league_id, season_start_year, print_logs=False, save_to_csv=False):
         """Returns a dataframe containing squad wage data for a given league and season"""
         
         # build url
@@ -193,16 +194,17 @@ class Fbref:
         result_df = pd.concat(df_list, axis=0, ignore_index=True)
 
         # save to csv & return df (if requested)
-        try:
-            if save_csv:
-                filename = f"league{league_id}_ssy{season_start_year}_cols{result_df.shape[1]}_rows{result_df.shape[0]}.csv"
-                path = os.path.join(self.output_dir, filename)
+
+        if save_csv:
+            filename = f"league{league_id}_ssy{season_start_year}_cols{result_df.shape[1]}_rows{result_df.shape[0]}.csv"
+            path = os.path.join(self.match_dir, filename)
+            try:
                 result_df.to_csv(path, sep=';', index=False) # some columns can contain commas -> semicolon as sep
-        except:
-            raise Exception(f"Error during saving in '{path}'. Check if output dir '{self.output_dir}' exists.")
-        finally:
-            if return_df:
-                return result_df
+            except:
+                raise Exception(f"Error during saving in '{path}'. Check if output dir '{self.match_dir}' exists.")
+            
+        if return_df:
+            return result_df
 
     def get_squad_id_df(self, league_id, season_start_year, print_logs=False):
         """Returns a df of fbref squad ids for a given league and season."""
@@ -312,3 +314,5 @@ class Fbref:
                 squad_id = link.split('/')[3]
                 squad_ids.append(squad_id)
         return squad_ids
+    
+    
