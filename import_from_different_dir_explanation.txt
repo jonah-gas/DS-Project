@@ -1,0 +1,27 @@
+########## if imports aren't working, paste the following code before any other imports ###########
+
+import os
+import sys
+
+root_path = os.path.abspath(os.path.join('..')) # <- adjust such that root_path always points at the root project dir (i.e. if current file is two folders deep, use '../..'). 
+if root_path not in sys.path:
+    sys.path.append(root_path)
+
+###################################################################################################
+
+This is necessary for example to use db_utilities.py in other folders.
+
+
+Example with the following file structure:
+
+project_dir
+----dir_a
+    ----module_a.py
+----dir_b
+    ----notebook_b.ipynb
+
+By pasting the above code at the top of notebook_b, we can do the following import inside the notebook:
+
+import dir_a.module_a as module_a 
+
+
