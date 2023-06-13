@@ -125,7 +125,6 @@ CREATE TABLE matchstats (
     shooting_standard_fk int,
     shooting_standard_pk int,
     shooting_standard_pkatt int,
-    shooting_expected_xg float,
     shooting_expected_npxg float,
     shooting_expected_npxg_per_sh float,
     shooting_expected_g_minus_xg float,
