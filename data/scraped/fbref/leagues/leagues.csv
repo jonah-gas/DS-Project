@@ -1,4 +1,4 @@
-league_id,name,country,season_str_format
+fbref_id,name,country,season_str_format
 9,Premier League,ENG,yyyy-yyyy
 12,La Liga,ESP,yyyy-yyyy
 13,Ligue 1,FRA,yyyy-yyyy
