@@ -9,7 +9,7 @@ import os
 class Fbref:
     """ Implements all the functions required to scrape match- (and other) data from fbref.com"""
     # constructor
-    def __init__(self, min_request_delay=3.1, output_dir=r'../data/scraped/fbref'):
+    def __init__(self, min_request_delay=3.1, output_dir=r'../data/scraped/fbref/new'):
         # This table contains scraping-relevant info for every data type available on fbref. 
         # Storing it here makes it possible to write the scraping procedure as loop over all data types later instead of dealing with them individually.
         self.MATCH_DATA_TYPES = pd.DataFrame({
@@ -25,7 +25,7 @@ class Fbref:
         self.match_dir =  os.path.join(output_dir, 'match')
         self.wages_dir = os.path.join(output_dir, 'wages')
 
-    def get_wages_df(self, league_id, season_start_year, print_logs=False, save_to_csv=False):
+    def get_wages_df(self, league_id, season_start_year, print_logs=False, save_csv=False):
         """Returns a dataframe containing squad wage data for a given league and season"""
         
         # build url
