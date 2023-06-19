@@ -39,7 +39,7 @@ CREATE TABLE leagues (
 -- Table TEAMS
 CREATE TABLE teams (
     id SERIAL PRIMARY KEY,
-    fbref_id text UNIQUE,
+    fbref_id text UNIQUE NOT NULL,
     name text UNIQUE NOT NULL,
     country char(3) REFERENCES countries (code)
 );
@@ -83,7 +83,8 @@ CREATE TABLE teamwages (
     weekly_wages_usd bigint,
     annual_wages_eur bigint,
     annual_wages_gbp bigint,
-    annual_wages_usd bigint
+    annual_wages_usd bigint,
+    PRIMARY KEY (team_id, season_str)
 );
 
 
