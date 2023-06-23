@@ -35,10 +35,16 @@ class DataCleaning:
         cols_to_drop = df.columns[self.cleaning_info['fbref_match']['drop_before_matchstats_insert']]
         cols_to_check_missing = df.columns[self.cleaning_info['fbref_match']['drop_row_if_missing_before_matchstats_insert']]
 
-        ### drop columns ####
+        ### drop columns ###
         df.drop(cols_to_drop, axis=1, inplace=True)
 
         ### validate data ###
+        # drop exact duplicates (e.g. due to overlapping seasons in files in data archive folder)
+        n_rows_before = df.shape[0]
+        df.drop_duplicates(inplace=True)
+        print(60*'*')
+        print(f"matchstats cleaning: Dropped {n_rows_before - df.shape[0]} exact duplicates.")
+
         # drop rows with missing values in essential columns (ids, etc.)
         n_rows_before = df.shape[0]
         df.dropna(subset=cols_to_check_missing, inplace=True)
@@ -143,6 +149,12 @@ class DataCleaning:
 
     def clean_teamwages_for_db(self, df):
         """Prepare team wages for db insert into teamwages table"""
+
+        # drop exact duplicates
+        n_rows_before = df.shape[0]
+        df.drop_duplicates(inplace=True)
+        print(60*'*')
+        print(f"teamwages cleaning: Dropped {n_rows_before - df.shape[0]} exact duplicates.")
 
         # fix pct_estimated column
         df['pct_estimated'] = df['pct_estimated'].str.replace('%', '').astype(float)

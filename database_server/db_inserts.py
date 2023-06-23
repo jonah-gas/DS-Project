@@ -50,15 +50,24 @@ def insert_leagues(batchsize=1):
                                             batchsize=batchsize)
     return n_ins, n_failed
 
-def insert_teamwages(batchsize=25):
+def insert_teamwages(batchsize=25, include_archive=False, include_new=True):
     """Read in teamwages .csv-files and insert new entries into the db."""
-    # read in csv
+    # read in data and concat to one df
     wages_path = os.path.join(root_path, 'data', 'scraped', 'fbref', 'wages')
-    df = pd.concat([pd.read_csv(os.path.join(wages_path, f), sep=';') for f in os.listdir(wages_path)])
+
+    df_archive, df_new = None, None
+    if include_archive:
+        archive_path = os.path.join(wages_path, 'archive')
+        df_archive = pd.concat([pd.read_csv(os.path.join(archive_path, f), sep=';') for f in os.listdir(archive_path)])
+    if include_new:
+        new_path = os.path.join(wages_path, 'new')
+        df_new = pd.concat([pd.read_csv(os.path.join(new_path, f), sep=';') for f in os.listdir(new_path)])
+
+    raw_df = pd.concat([df for df in [df_archive, df_new] if df is not None])
 
     # clean 
     cleaner = DataCleaning()
-    clean_df = cleaner.clean_teamwages_for_db(df)
+    clean_df = cleaner.clean_teamwages_for_db(raw_df)
     # perform inserts
     n_ins, n_failed = _perform_batch_insert(df=clean_df, 
                                             table_name='teamwages', 
