@@ -1,3 +1,4 @@
+
 import psycopg2
 import pandas as pd
 
@@ -42,6 +43,16 @@ def select_query(query_str, conn=None):
             query:      SQL query to be executed
             conn:       connection object to the database. If provided, the connection will NOT be closed inside this function!
                         If not provided, a connection will be opened and closed in this function."""
+    
+    # reject multiple queries in query string
+    if query_str.count(';') > 1:
+        raise Exception('Multiple queries in query string. Please provide only one query at a time.')
+
+    # reject non-select queries
+    if not query_str.lower().lstrip().startswith('select'):
+        raise Exception('Query is not a SELECT query. Please provide a SELECT query.')
+    
+
     to_be_closed = False # flag to indicate whether connection should be closed inside this function
     if conn is None:
         # get connection if not provided
