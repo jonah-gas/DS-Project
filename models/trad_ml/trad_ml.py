@@ -9,8 +9,18 @@ import database_server.db_utilities as dbu
 
 import numpy as np
 import pandas as pd
-# import pca
+
+from cleaning.data_cleaning import DataCleaning
+
+# sklearn imports
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+import datetime as dt
+
+import pickle as pkl
+
+
 
 
 
@@ -47,7 +57,17 @@ class TradML:
         df = dbu.select_query(query_str) # note: can take 5-10 seconds for complete data set
         return df
     
-    def generate_features(self, df=None, apply_pca=False, fitted_pca=None): # should probably add a bunch of parameters here for easier hyperparameter tuning
+    def generate_features(self, 
+                          df=None, 
+                          apply_pca=False, 
+                          fitted_pca=None,
+                          saved_pca_name='pca_test',
+                          ma_alpha=0.35,
+                          ma_min_periods=7,
+                          max_na_cols = 0.1,
+                          merge=True, # if True: merge two rows into one for every match (with almost twice the number of features)
+                                      # otherwise: compute ratios/differences between home and away team features
+                          targets=['gf', 'ga']): # should probably add a bunch of parameters here for easier hyperparameter tuning
         
         ## ORDER OF STEPS IN THIS FUNCTION IS REALLY IMPORTANT! ORDER BELOW IS SUBJECT TO CHANGE ##
 
@@ -58,52 +78,141 @@ class TradML:
         ## ID COLUMNS -> MAKE CATEGORICAL AT THE BEGINNING? ###
 
 
-        # load data
+        ### load data ###
         if df is None:
             df = self.load_data()
         # sort (important for moving averages to be computed correctly!)
         df = df.sort_values(['team_id', 'schedule_date', 'schedule_time'], ascending=[True, True, True])
-        
-        ### feature additions ###
 
+        ### data prep ###
+        # get id cols
+        id_cols = ['season_str', 'league_id', 'team_id', 'opponent_id', 'match_id']
+        # convert id cols to categorical
+        df[id_cols] = df[id_cols].astype('object')
+        # define cols to omit from moving averages computation (will be appended to later)
+        omit_from_ma_cols = []
+
+        ### feature additions ###
+        
         # points variable based on result column
         df['points'] = df['result'].map({'W': 3, 'L': 0, 'D': 1})
 
-        # head2head 
+        # attendance feature
+        omit_from_ma_cols.append('attendance')
 
+        # formation feature (most common of last x matches)
+        #omit_from_ma_cols.append('formation')
+        # head2head 
+        #omit_from_ma_cols.append('head2head')
+        
 
         ### moving averages computation ###
 
         # define ma feature columns (all numerical? note that df loaded from db varies between ints and floats depending on where NA values are present)
         # except head2head feature
-        #ma_cols = df.select_dtypes(include=['int', 'float']).columns.drop(['head2head'])
+        ma_cols = df.select_dtypes(include=['float', 'int']).columns.drop(omit_from_ma_cols)
         
-        # compute moving averages and add as new columns to df
-        ma_features = df.groupby(['team_id'])[ma_cols].apply(lambda x: x.shift(1).ewm(alpha=alpha, min_periods=min_periods).mean())
+        # compute moving averages
 
-        # drop old columns 
+        # NOTE: grouping by season_str as well here helps implement the "drop first x observations for each season" because we can simply drop na rows later.
+        ma_features = df.groupby(['team_id', 'season_str'])[ma_cols].apply(lambda x: x.shift(1).ewm(alpha=ma_alpha, min_periods=ma_min_periods).mean())
+        # add new columns to df
+        df = df.join(ma_features, rsuffix='_ma')
+        # drop old (pre-ma) columns (except targets and id cols)
+        df = df.drop(ma_cols.drop(targets), axis=1)
 
-        ### drop columns not desired for training ###
-        # for now: all categoricals?
+        ### merge two rows into one for every match
+        df = self._merge_data(df)
 
-        ### onehot encoding ###
-        # for now: skip since all categoricals have been dropped
+        ### one-hot encoding of categorical variables ###
+        # drop all categoricals not encoded
+        cats_to_drop = [c for c in df.select_dtypes(include=['object']).columns if c not in ['season_str', 'schedule_date']]
+        df = df.drop(cats_to_drop, axis=1)
+        # NOTE: DF STILL CONTAINS TWO NON-FEATURE COLUMNS (season_str and date) WHICH ARE NEEDED FOR SPLIT
+        # maybe figure out better solution!
+
+        ### handle missing values ###
+        # drop rows with too many missing values 
+       
+        df.dropna(inplace=True) # for now: drop all rows with missing values in any col
 
 
+        ### split into features and targets ###
+        features, targets = df[df.columns.drop(targets)], df[targets]
 
+        ### normalization ###
+        # NOTE: EXCLUDE OBJECT COLUMNS FROM NORMALIZATION!
+        scaler = StandardScaler()
+        features = scaler.fit_transform(features)
 
-
-
-
-
-
-
-
-
+        ### PCA ###
         # if apply_pca: either load saved pca model or accept as parameter
+        if apply_pca:
+            if fitted_pca is None:
+                # load pca from pickle file
+                pkl_path = os.path.join(root_path, 'models', 'trad_ml', 'saved_models', 'pca', f'{saved_pca_name}.pkl')
+                with open(os.path.join(root_path, '') , 'rb') as f:
+                    fitted_pca = pkl.load(f)
 
+            features = fitted_pca.transform(features)
+            
         return features, targets
+    
+    def _merge_data(self, data_raw_cleaned):
+        """
+        Merges the two sets of observations for one game and removes duplicated rows.
+
+        Arguments:
+            data_raw_cleaned (pd.DataFrame): Cleaned data.
+        Returns:
+            pd.DataFrame: Merged data.
+        """
+        # Filter rows where Venue is 'Home' and where Venue is 'Away'
+        home_games = data_raw_cleaned[data_raw_cleaned['venue'] == 'Home']
+        away_games = data_raw_cleaned[data_raw_cleaned['venue'] == 'Away']
+
+        # Get the list of column names in home_games DataFrame and in away_games DataFrame
+        column_names_home = home_games.columns.tolist()
+        column_names_away = away_games.columns.tolist()
+
+        # Create a dictionary mapping old column names to new column names for home_games and away_games
+        new_column_names_home = {old_name: f"{old_name}_home" for old_name in column_names_home}
+        new_column_names_away = {old_name: f"{old_name}_away" for old_name in column_names_away}
+
+        # Use the rename method to rename columns in home_games and away_games with the new names
+        home_games = home_games.rename(columns=new_column_names_home)
+        away_games = away_games.rename(columns=new_column_names_away)
+
+        # Merge home_games and away_games based on matching fbref_match_id columns
+        merged_data = home_games.merge(away_games, left_on="match_id_home", right_on="match_id_away")
+
+        # Find duplicated rows due to merging and delete one of them while renaming the other
+        duplicated_cols = []
+        dropped_cols = []
+        for i, col in enumerate(merged_data.columns[:-1]):
+            for j in range(i+1, len(merged_data.columns)):
+                if merged_data[col].equals(merged_data.iloc[:, j]):
+                    duplicated_cols.append((col, merged_data.columns[j]))
+
+        for col_pair in duplicated_cols:
+            if col_pair[1] not in dropped_cols:
+                merged_data = merged_data.drop(col_pair[1], axis=1)
+                dropped_cols.append(col_pair[1])
+
+        for col_pair in duplicated_cols:
+            col_name = col_pair[0]
+            new_col_name = col_name[:-5]
+            merged_data = merged_data.rename(columns={col_name: new_col_name})
         
+        # Rename confusing column names
+        merged_data = merged_data.rename(columns={"team_id": "home_id",
+                                                  "opponent_id": "away_id"})
+        # Delete unnecessary columns
+        merged_data = merged_data.drop(["venue_home",
+                                        "venue_away"], axis=1)
+
+        return(merged_data)
+    
     def fit_pca(self, features, n_components=None, save_model=False, save_name=None):
 
         # Fit the PCA model with the determined number of components
@@ -112,17 +221,23 @@ class TradML:
         pca_model.fit(features)
 
         if save_model:
-            # save pca model
+            if save_name is None:
+                save_name = f"pca_model_n={pca_model.n_components_}_{dt.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.pkl"
+            # define path to pca model folder
+            save_path = os.path.join(root_path, 'models', 'trad_ml', 'saved_models', 'pca')
+            # save to path
+            with open(os.path.join(save_path, save_name), 'wb') as f:
+                pkl.dump(pca_model, f)
 
-            
         return pca_model
-
+'''
 
     def train_test_split(self, X, y, test_size=None, test_season=None): # think about whether randomizing is fine, if yes -> also add seed argument
         """ Split data into train and test sets. Either using the provided fraction or a fixed season for the test set."""
 
         return X_train, X_test, y_train, y_test
-    
+
+
     def fit_xgb(self, X_train, y_train):
         return model
     
@@ -138,9 +253,14 @@ class TradML:
 
     def load_saved_model(self):
         return model
+
+    def load_pca(self):
+        return pca_model
     
     def save_model(self, model, folder_name, model_name=None):
         pass
+        
+    
 
-
+'''
 
