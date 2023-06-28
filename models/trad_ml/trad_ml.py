@@ -99,6 +99,11 @@ class TradML:
 
         # attendance feature
         omit_from_ma_cols.append('attendance')
+        attendance_feature = df.groupby(['venue'])['attendance'].apply(lambda x: x.shift(1).rolling(window=ma_min_periods).mean())
+        df = df.join(attendance_feature, rsuffix='_a')
+        df = df.drop('attendance')
+        #SPÄTER NUR HOME BEHALTEN 
+        
 
         # formation feature (most common of last x matches)
         #omit_from_ma_cols.append('formation')
