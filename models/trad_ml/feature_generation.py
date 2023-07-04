@@ -21,12 +21,12 @@ import pickle as pkl
 # ignore setting with copy warning
 pd.options.mode.chained_assignment = None  # default='warn'
 
-############################################################################################################################################################################
+#------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 """
 The FeatureGen class implements all the steps involved in generating features from the data stored in our database.
 The primary function of this class is generate_features(), which can produce features for training/testing or individual predictions.
 
-- Feature generation parameters are stored in FeatureGen.params (dict). The dictionary looks as follows: 
+Feature generation parameters are stored in FeatureGen.params (dict). The dictionary looks as follows: 
 
     feature_gen_params = {
         'ma_alpha': 0.35, # the higher alpha, the more weight is put on recent observations vs. older observations
@@ -134,7 +134,7 @@ class FeatureGen:
             features (excl. non-feature cols) and targets.
         """
 
-        ### determine training vs. prediction mode & reject invalid input arguments ###############################################
+        ### determine training vs. prediction mode & reject invalid input arguments ############################################
 
         if isinstance(home_team_id, int) and isinstance(away_team_id, int):
             training = False # prediction mode -> create single feature row for prediction
@@ -144,7 +144,6 @@ class FeatureGen:
             raise ValueError("Invalid input arguments for home_team_id and away_team_id. Must be either both None (-> training) or both integers (-> prediction).")
         
         if print_logs: print(f"{60*'*'}\nStarting {'training' if training else 'prediction'} feature generation (run_name: {self.run_name}).")
-
 
         # for prediction mode, verify that data prep objects are provided
         if not training: 
@@ -188,10 +187,6 @@ class FeatureGen:
         
         # points variable based on result column
         df['result_score'] = df['result'].map({'W': 1, 'L': -1, 'D': 0})
-
-        # points variable for ranking calc (?)
-        #df['points'] = df['result'].map({'W': 3, 'L': 0, 'D': 1})
-
     
         # head2head 
         df = self._get_head2head_features(df, training)
@@ -208,16 +203,22 @@ class FeatureGen:
         if print_logs: print(f" - df shape after ma computation: {df.shape}")
 
         ### prediction mode only: filtering for the two most recent feature rows ###############################################
+
         if not training:
-            # extract the two relevant h2h feature values
+            ### handle h2h feature for predictions
+            # get subsets of relevant rows
             home_vs_away_rows = df.loc[(df['team_id'] == home_team_id) & (df['opponent_id']==away_team_id), :]
             away_vs_home_rows = df.loc[(df['team_id'] == away_team_id) & (df['opponent_id']==home_team_id), :]
+
             if len(home_vs_away_rows) == 0: # no previous matches between the two -> set h2h values to pd.NA
                 h2h_home_vs_away = [pd.NA] * len(h2h_cols)
                 h2h_away_vs_home = [pd.NA] * len(h2h_cols)
             else:
+                # extract the most recent relevant h2h feature set (from each team's perspective)
                 h2h_home_vs_away = home_vs_away_rows.sort_values('schedule_date', ascending=True).tail(1)[h2h_cols].values.tolist()[0]
                 h2h_away_vs_home = away_vs_home_rows.sort_values('schedule_date', ascending=True).tail(1)[h2h_cols].values.tolist()[0]
+
+            # filter df for the two most recent feature rows (-> selects relevant ma features for predictions)
             df = df.sort_values(['team_id', 'schedule_date']).groupby(['team_id']).tail(1).reset_index(drop=True)
             
             # set extracted values as h2h feature values in df
@@ -251,13 +252,13 @@ class FeatureGen:
         
         if print_logs: print(f" - df shape after merge: {df.shape}")
 
-        ### drop rows with too many missing values ##############################################################################
+        ### drop rows with too many missing values #############################################################################
         if print_logs: print(f" - n rows with any na after merge: {df.isna().any(axis=1).sum()}")
         df.dropna(thresh=self.params['min_non_na_share'], inplace=True) # for now: drop all rows with missing values in any col
         if print_logs: print(f" - df shape after dropping na rows over na threshold: {df.shape}")
 
 
-        ### split into features (X)  and targets (y) ############################################################################
+        ### split into features (X)  and targets (y) ###########################################################################
 
         X = df[[c for c in df.columns if c not in self.params['targets']]]
         if print_logs: print(f" - X shape after feature/target split: {X.shape}")
@@ -290,7 +291,7 @@ class FeatureGen:
             if X[[c for c in X.columns if c not in non_feature_cols]].isna().any(axis=1).sum() > 0:
                 print(f"***WARNING: prediction feature row has missing values in {[c for c in X.columns if X[c].isna().any() and c not in non_feature_cols]}")
 
-        ### standardize features ################################################################################################
+        ### standardize features ###############################################################################################
         
         if self.params['apply_scaler']:
             # standardize all columns except non-feature cols (note: there shouldn't be any categorical feature cols left at this point)
@@ -309,14 +310,16 @@ class FeatureGen:
                 X[cols_to_be_standardized] = self.scaler.transform(X[cols_to_be_standardized])
                 if print_logs: print(f" - X shape post scaling: {X.shape}")
 
-        ### PCA ###############################################################################################################
+        ### PCA ################################################################################################################
 
         if self.params['apply_pca']:
             pca_cols = [c for c in X.columns if c not in non_feature_cols]
 
             if training:
                 if self.pca is None: # fit new pca (and save it)
-                    self.pca = self._fit_pca(X_train[pca_cols], save=True)
+                    self.pca = PCA(n_components=self.params['pca_n_components'])
+                    self.pca.fit(X_train[pca_cols])
+                    self._save_data_prep_object(self.pca)
 
                 # transform training and test data
                 X_train_pca_df = pd.DataFrame(self.pca.transform(X_train[pca_cols]))
@@ -476,20 +479,6 @@ class FeatureGen:
             save_name = f"{obj.__class__.__name__}_{self.run_name}"
         with open(os.path.join(self.data_prep_objects_path, f"{save_name}.pkl"), 'wb') as f:
             pkl.dump(obj, f)
-
-    def _fit_pca(self, features, save=True, save_name=None):
-        """
-        Fits a PCA model to the given features and returns the fitted model.
-        """
-        # Fit the PCA model with the determined number of components
-        # (note: n_components can be a fraction between zero and one, in which case the number of components is determined via the explained variance threshold)
-        pca_model = PCA(n_components=self.params['pca_n_components'])
-        pca_model.fit(features)
-
-        if save:
-            self._save_data_prep_object(pca_model, save_name=save_name)
-
-        return pca_model
 
     def _train_test_split(self, X, y, cutoff_date=None, test_season=None): # think about whether randomizing is fine, if yes -> also add seed argument
         """
