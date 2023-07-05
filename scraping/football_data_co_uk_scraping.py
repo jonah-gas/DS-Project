@@ -5,11 +5,11 @@ from bs4 import BeautifulSoup
 import csv
 from urllib.parse import urljoin
 
-class FootballDataCoUkScrapping:
-    """A class for scrapping CSV data from the football-data.co.uk website."""
+class FootballDataCoUkScraping:
+    """Implements scraping match and betting odds data from football-data.co.uk."""
 
     def download_csv_data(self, country, league):
-        """Downloads the CSV data for the specified country and league from the football-data.co.uk website. """
+        """Downloads the CSV data for the specified country and league. """
 
         # URL of the webpage containing the table
         url = f"https://www.football-data.co.uk/{country.lower()}m.php"
@@ -60,7 +60,7 @@ class FootballDataCoUkScrapping:
 
                     print(f"CSV {csv_filename} downloaded and saved successfully.")
                 else:
-                    print(f"Failed to download CSV {csv_filename}.")
+                    print(f"Failed to download CSV {csv_filename} (response status code: {csv_response.status_code}).")
         else:
             print(f"{league} CSV links not found.")
 
