@@ -1,7 +1,9 @@
--- The following commands should be executed as postgres superuser.
+-- This script should be executed as postgres superuser.
+-- See also db_setup.ipynb for db setup from python. 
 
 
 -- Create the database
+
 CREATE DATABASE soccerdb;
 
 -- connect to new database
@@ -12,36 +14,34 @@ CREATE DATABASE soccerdb;
 -- Tables -----------------------------------------------------------------------------------------------------------------
 
 -- Table overview: 
-    -- matches -> contains match_ids and base data (but not statistics)
-    -- match_stats -> contains statistics for each match, one row per (match_id, team_id), i.e. two rows per match (one for each team)
-    -- teams -> contains team_ids and team names
-    -- (players -> contains player_ids and player names)
-    -- (player_stats -> contains statistics for each player, one row per (player_id, match_id))
-    -- wages -> contains wages per team and season
-    -- leagues -> contains league_ids and league names
-    -- countries -> country codes and names
+    -- matches      -> contains match_ids and schedule data
+    -- matchstats   -> contains statistics for each match, one row per (match_id, team_id), i.e. two rows per match (one for each team)
+    -- teams        -> contains team_ids and team names
+    -- wages        -> contains wages per team and season
+    -- leagues      -> contains league_ids and league names
+    -- countries    -> country codes and names
 
 -- Table COUNTRIES
 CREATE TABLE countries (
-    code char(3) PRIMARY KEY,
-    name text UNIQUE NOT NULL
+    code    char(3) PRIMARY KEY,
+    name    text UNIQUE NOT NULL
 );
 
 
 -- Table LEAGUES
 CREATE TABLE leagues (
-    id SERIAL PRIMARY KEY,
-    fbref_id text UNIQUE NOT NULL,
-    name text UNIQUE NOT NULL,
-    country char(3) REFERENCES countries (code)
+    id          SERIAL PRIMARY KEY,
+    fbref_id    text UNIQUE NOT NULL,
+    name        text UNIQUE NOT NULL,
+    country     char(3) REFERENCES countries (code)
 );
 
 -- Table TEAMS
 CREATE TABLE teams (
-    id SERIAL PRIMARY KEY,
-    fbref_id text UNIQUE NOT NULL,
-    name text UNIQUE NOT NULL,
-    country char(3) REFERENCES countries (code)
+    id          SERIAL PRIMARY KEY,
+    fbref_id    text UNIQUE NOT NULL,
+    name        text UNIQUE NOT NULL,
+    country     char(3) REFERENCES countries (code)
 );
 
 -- Table MATCHES
@@ -56,16 +56,16 @@ CREATE TABLE teams (
 CREATE TYPE weekday AS ENUM ('Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun');
 
 CREATE TABLE matches (
-    id SERIAL PRIMARY KEY,
-    fbref_id text UNIQUE NOT NULL,
-    league_id integer REFERENCES leagues (id) NOT NULL,
-    home_team_id integer REFERENCES teams (id) NOT NULL,
-    away_team_id integer REFERENCES teams (id) NOT NULL,
+    id              SERIAL PRIMARY KEY,
+    fbref_id        text UNIQUE NOT NULL,
+    league_id       int REFERENCES leagues (id) NOT NULL,
+    home_team_id    int REFERENCES teams (id) NOT NULL,
+    away_team_id    int REFERENCES teams (id) NOT NULL,
     -- also include a few of the base data columns which don't really belong in matchstats
-    schedule_date date,
-    schedule_time time,
-    schedule_round text,
-    schedule_day weekday
+    schedule_date   date,
+    schedule_time   time,
+    schedule_round  text,
+    schedule_day    weekday
 );
 
 
@@ -74,16 +74,16 @@ CREATE TABLE matches (
 -- squad_name;n_players;pct_estimated
 
 CREATE TABLE teamwages (
-    team_id integer REFERENCES teams (id) NOT NULL,
-    season_str text NOT NULL,
-    n_players integer,
-    pct_estimated float(4),
-    weekly_wages_eur bigint,
-    weekly_wages_gbp bigint,
-    weekly_wages_usd bigint,
-    annual_wages_eur bigint,
-    annual_wages_gbp bigint,
-    annual_wages_usd bigint,
+    team_id             int REFERENCES teams (id) NOT NULL,
+    season_str          text NOT NULL,
+    n_players           int,
+    pct_estimated       float(4),
+    weekly_wages_eur    bigint,
+    weekly_wages_gbp    bigint,
+    weekly_wages_usd    bigint,
+    annual_wages_eur    bigint,
+    annual_wages_gbp    bigint,
+    annual_wages_usd    bigint,
     PRIMARY KEY (team_id, season_str)
 );
 
@@ -94,14 +94,14 @@ CREATE TABLE teamwages (
 -- primary key: (match_id, team_id) 
 -- foreign keys: match_id, team_id, opponent_id, league_id
 
--- special types
-CREATE TYPE matchresult AS ENUM ('L', 'D', 'W'); -- ordered type might be useful
+-- special types: matchresult and venuetype
+CREATE TYPE matchresult AS ENUM ('L', 'D', 'W'); -- ordered type might be useful later
 
 CREATE DOMAIN venuetype AS TEXT 
     CHECK (VALUE IN ('Home', 'Away', 'Neutral'));
 
 CREATE TABLE matchstats (
-    venue text,
+    venue venuetype,
     result matchresult,
     gf int,
     ga int,
@@ -112,7 +112,7 @@ CREATE TABLE matchstats (
     formation text,
     referee text,
     season_str text,
-    league_id int REFERENCES leagues (id) ,
+    league_id int REFERENCES leagues (id),
     team_id int REFERENCES teams (id) NOT NULL,
     opponent_id int REFERENCES teams (id) NOT NULL,
     match_id int REFERENCES matches (id) NOT NULL,

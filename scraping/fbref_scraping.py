@@ -7,8 +7,13 @@ import os
 
 
 class Fbref:
-    """ Implements all the functions required to scrape match- (and other) data from fbref.com"""
-    # constructor
+    """ 
+    Implements all the functions required to scrape match and wage data from fbref.com.
+
+    By default, scraped data is saved in data/scraped/fbref in the respective subfolders in the 'new' folder.
+    This is where new data is expected to be located by the database_server.db_inserts module.
+    """
+    
     def __init__(self, min_request_delay=3.1, output_dir=r'../data/scraped/fbref'):
         # This table contains scraping-relevant info for every data type available on fbref. 
         # Storing it here makes it possible to write the scraping procedure as loop over all data types later instead of dealing with them individually.
@@ -49,7 +54,7 @@ class Fbref:
         table_df['squad_id'] = squad_ids
         # add season_str 
         table_df['season_str'] = season_str
-        # drop Rank column (not needed)
+        # drop rank column (not needed)
         table_df = table_df.drop(columns='Rk')
         # rename columns to match db schema
         table_df = table_df.rename(columns={'Squad': 'squad_name', 'Weekly Wages': 'weekly_wages', 'Annual Wages': 'annual_wages', '# Pl': 'n_players', '% Estimated': 'pct_estimated'})
@@ -76,9 +81,6 @@ class Fbref:
             table_df[f'{col}_gbp'] = gbp
             table_df[f'{col}_usd'] = usd
         return table_df
-
-
-        #return table_df
 
     def get_squad_match_data_df(self, squad_id, league_id, season_start_year, print_logs=False):
         """Returns a dataframe containing all match data for a given squad, league and season."""
@@ -176,7 +178,7 @@ class Fbref:
             data_df = self.get_squad_match_data_df(squad_id['squad_id'], league_id, season_start_year, print_logs=print_logs)
             df_list.append(data_df)
 
-        # before concatenating, perform some checks
+        ### before concatenating, perform some checks
         # column check: must match exactly (note: maybe should also check against a final expected column count)
         if not all([df_list[0].columns.equals(df.columns) for df in df_list]):
             # print column counts for debugging
@@ -194,7 +196,6 @@ class Fbref:
         result_df = pd.concat(df_list, axis=0, ignore_index=True)
 
         # save to csv & return df (if requested)
-
         if save_csv:
             filename = f"league{league_id}_ssy{season_start_year}_cols{result_df.shape[1]}_rows{result_df.shape[0]}.csv"
             path = os.path.join(self.match_dir, filename)
@@ -259,7 +260,7 @@ class Fbref:
         return response
 
     def _get_ids_from_matchlogs_table(self, response):
-        """Returns lists containing the fbref match ids and opponent squad ids from the table on a matchlogs page"""
+        """Returns lists containing the fbref match ids and opponent squad ids from the table on a matchlogs page."""
         # find table with bs4
         soup = BeautifulSoup(response.text, 'html.parser')
         soup_table = soup.find('table', {'id': 'matchlogs_for'}) # table id is always 'matchlogs_for'
@@ -294,7 +295,7 @@ class Fbref:
         return match_ids, opponent_ids
     
     def _get_ids_from_wages_table(self, response):
-        """Returns lists containing the fbref squad ids from the table on a wages page"""
+        """Returns lists containing the fbref squad ids from the table on a wages page."""
         # find table with bs4
         soup = BeautifulSoup(response.text, 'html.parser')
         soup_table = soup.find('table', {'id': 'squad_wages'}) # table id is always 'matchlogs_for'

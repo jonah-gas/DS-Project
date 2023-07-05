@@ -51,7 +51,7 @@ Feature generation parameters are stored in FeatureGen.params (dict). The dictio
 
         'apply_pca': True,
         'pca_name': None, # load fitted pca from file (provide filename without .pkl suffix) <- must not be None when generating prediction features!
-        'pca_n_components': 0.98, # only relevant if not loading fitted pca
+        'pca_n_components': 0.98, # only relevant if not loading fitted pca (note: n_components can be a fraction between zero and one, in which case the number of components is determined via the explained variance threshold)
 
         'targets': ['gf', 'ga'], # one of [['gf', 'ga'], ['xg', 'xga']] or list of any single stat column.
         'target_as_diff': False # if True (and two target columns were specified), target is provided as difference between the two columns
@@ -430,8 +430,8 @@ class FeatureGen:
         Merges feature rows for home and away team into one row per match.
         """
 
-        # Note: In prediction mode df contains two rows which are to be merged and the order of the rows w.r.t. home team and away team is not known.
-        # However, as long as we previously have set 'match_id' to -1 for both, and 'venue' to 'Home' and 'Away' respectively, we can perform the same merge as in training mode.
+        # note: In prediction mode df contains two rows which are to be merged and the order of the rows w.r.t. home team and away team is not known.
+        # however, as long as we previously have set 'match_id' to -1 for both, and 'venue' to 'Home' and 'Away' respectively, we can perform the same merge as in training mode.
 
         # Filter rows where Venue is 'Home' and where Venue is 'Away'
         home_games = df[df['venue'] == 'Home']
