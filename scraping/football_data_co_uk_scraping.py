@@ -60,7 +60,7 @@ class FootballDataCoUkScraping:
 
                     print(f"CSV {csv_filename} downloaded and saved successfully.")
                 else:
-                    print(f"Failed to download CSV {csv_filename} (response status code: {csv_response.status_code}).")
+                    print(f"Failed to download CSV {f'{league}_{season}.csv'} (response status code: {csv_response.status_code}).")
         else:
             print(f"{league} CSV links not found.")
 
