@@ -56,12 +56,10 @@ Feature generation parameters are stored in FeatureGen.params (dict). The dictio
         'targets': ['gf', 'ga'], # one of [['gf', 'ga'], ['xg', 'xga']] or list of any single stat column.
         'target_as_diff': False # if True (and two target columns were specified), target is provided as difference between the two columns
     }
-
-
 """
 class FeatureGen:
 
-    def __init__(self, params_dict, db_full_data=None, db_pred_data=None):
+    def __init__(self, params_dict=None, db_full_data=None, db_pred_data=None):
         """Constructor for FeatureGen class."""
 
         self.data_prep_objects_path = os.path.join(root_path, 'models', 'trad_ml', 'saved_data_prep_objects')
@@ -77,11 +75,14 @@ class FeatureGen:
 
     def set_params(self, new_params_dict, run_name=None):
         """Updates self.params with new parameters. Also updates self.run_name and loads data prep objects."""
-        self.params = new_params_dict
-        # update run name (-> used to identify saved models and data prep objects)
-        self.run_name = run_name if run_name is not None else ''.join(np.random.choice(list("abcdefghijklmnopqrstuvwxyz"), 6, replace=True).tolist())
-        # set data prep objects according to params
-        self._set_data_prep_objects() 
+        if new_params_dict is None:
+            print("Warning: No feature generation parameters provided!")
+        else:
+            self.params = new_params_dict
+            # update run name (-> used to identify saved models and data prep objects)
+            self.run_name = run_name if run_name is not None else ''.join(np.random.choice(list("abcdefghijklmnopqrstuvwxyz"), 6, replace=True).tolist())
+            # set data prep objects according to params
+            self._set_data_prep_objects() 
 
     def load_data(self, home_team_id=None, away_team_id=None, return_df=False):
         """Loads relevant data from db into self.db_full_data (training mode) or self.db_pred_data (prediction mode)."""
@@ -144,6 +145,10 @@ class FeatureGen:
             raise ValueError("Invalid input arguments for home_team_id and away_team_id. Must be either both None (-> training) or both integers (-> prediction).")
         
         if print_logs: print(f"{60*'*'}\nStarting {'training' if training else 'prediction'} feature generation (run_name: {self.run_name}).")
+
+        # ensure params dict is set
+        if self.params is None:
+            raise ValueError("Must set feature generation parameters before calling generate_features().")
 
         # for prediction mode, verify that data prep objects are provided
         if not training: 
