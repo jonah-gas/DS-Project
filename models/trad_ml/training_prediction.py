@@ -4,6 +4,13 @@ Created on Tue Jul  4 17:08:45 2023
 
 @author: johan_nii2lon
 """
+import os
+import sys
+
+root_path = os.path.abspath(os.path.join('../..')) # <- adjust such that root_path always points at the root project dir (i.e. if current file is two folders deep, use '../..'). 
+if root_path not in sys.path:
+    sys.path.append(root_path)
+
 import pickle
 import pandas as pd
 import numpy as np
@@ -175,14 +182,13 @@ class ModelPrediction:
     def __init__(self):
         pass
 
-    def predict_prob(self, X_test, model, xgb = True, dif=True):
+    def predict_prob(self, X_test, model,dif=True):
         """
         Predicts the probabilities of home win, draw, and away win for given test data.
         
         Arguments:
         - X_test: The test data to make predictions on.
         - model: The trained model to use for predictions.
-        - xgb (optional): Indicates whether the model is an XGBoost classifier. Default is True.
         - dif (optional): Indicates whether to perform difference-based predictions. Default is True.
         
         Returns:
@@ -222,7 +228,8 @@ class ModelPrediction:
             df_result_prob['away_winning_prob'] = away_winning_prob
 
         else:
-            if xgb is True:
+            # if xgb model
+            if model.__class__.__name__ in ['XGBClassifier', 'XGBRegressor', 'GradientBoostingClassifier', 'GradientBoostingRegressor']:
                 # Predict probabilities using the model
                 y_pred_prob_dif = model.predict_proba(X_test)
                 
