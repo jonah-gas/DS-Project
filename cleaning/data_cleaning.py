@@ -16,7 +16,7 @@ class DataCleaning:
         cleaning_info_path = os.path.join(root_path, 'cleaning', 'cleaning_info.xlsx')
         self.cleaning_info = pd.read_excel(cleaning_info_path, sheet_name=None)
 
-    def clean_matchstats_for_db(self, df):
+    def clean_matchstats_for_db(self, df, conn=None):
         """Cleans the raw scraped data by dropping columns, removing rows with missing values, and renaming columns."""
 
         # rename columns
@@ -57,11 +57,11 @@ class DataCleaning:
         ### id matching ###
 
         # create matching dicts
-        leagues_df = dbu.select_query("SELECT fbref_id, id FROM leagues;")
+        leagues_df = dbu.select_query("SELECT fbref_id, id FROM leagues;", conn=conn)
         leagues_dict = dict(zip(leagues_df['fbref_id'].astype(int), leagues_df['id']))
-        teams_df = dbu.select_query("SELECT fbref_id, id FROM teams;")
+        teams_df = dbu.select_query("SELECT fbref_id, id FROM teams;", conn=conn)
         teams_dict = dict(zip(teams_df['fbref_id'], teams_df['id'].astype(int)))
-        matches_df = dbu.select_query("SELECT fbref_id, id FROM matches;")
+        matches_df = dbu.select_query("SELECT fbref_id, id FROM matches;", conn=conn)
         matches_dict = dict(zip(matches_df['fbref_id'], matches_df['id'].astype(int)))
 
         # replace fbref ids with db ids
@@ -72,14 +72,14 @@ class DataCleaning:
 
         return df
 
-    def get_teams_for_db(self, df):
+    def get_teams_for_db(self, df, conn=None):
         """Isolates team names and ids from raw scraped data for db insert."""
 
         # get distinct (fbref-) team names and fbref league ids
         df = df.groupby('schedule_fbref_opponent_id').first().sort_values('schedule_fbref_league_id')[['schedule_Opponent', 'schedule_fbref_league_id']].reset_index()
         
         # get leagues table for country matching
-        leagues_df = dbu.select_query("SELECT * FROM leagues;")
+        leagues_df = dbu.select_query("SELECT * FROM leagues;", conn=conn)
         
         # get matching dict
         leagues_dict = dict(zip(leagues_df['fbref_id'].astype(int), leagues_df['country']))
@@ -98,7 +98,7 @@ class DataCleaning:
                            'schedule_Opponent': 'name'}, inplace=True)
         return df
 
-    def get_matches_for_db(self, df):
+    def get_matches_for_db(self, df, conn=None):
         """Isolates match information from raw scraped data for db insert."""
 
         # filter only rows from home perspective (caution: if tournaments (i.e. world cups) are in the data this might not work!)
@@ -113,9 +113,9 @@ class DataCleaning:
         df = df[~df['schedule_fbref_match_id'].isna()]
 
         # get id matching dicts
-        leagues_df = dbu.select_query("SELECT id, fbref_id FROM leagues;")
+        leagues_df = dbu.select_query("SELECT id, fbref_id FROM leagues;", conn=conn)
         leagues_dict = dict(zip(leagues_df['fbref_id'].astype(int), leagues_df['id']))
-        teams_df = dbu.select_query("SELECT id, fbref_id FROM teams;")
+        teams_df = dbu.select_query("SELECT id, fbref_id FROM teams;", conn=conn)
         teams_dict = dict(zip(teams_df['fbref_id'], teams_df['id'].astype(int)))
 
         # add db id columns to df
@@ -137,7 +137,7 @@ class DataCleaning:
 
         return df
 
-    def clean_teamwages_for_db(self, df):
+    def clean_teamwages_for_db(self, df, conn=None):
         """Prepare team wages for db insert into teamwages table"""
 
         # drop exact duplicates
@@ -150,7 +150,7 @@ class DataCleaning:
         df['pct_estimated'] = df['pct_estimated'].str.replace('%', '').astype(float)
 
         # id matching (new team_id column)
-        teams_df = dbu.select_query("SELECT fbref_id, id FROM teams;")
+        teams_df = dbu.select_query("SELECT fbref_id, id FROM teams;", conn=conn)
         teams_dict = dict(zip(teams_df['fbref_id'], teams_df['id'].astype(int)))
         df['team_id'] = df['squad_id'].map(teams_dict)
 

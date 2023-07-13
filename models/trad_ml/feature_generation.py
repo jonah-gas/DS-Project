@@ -59,8 +59,10 @@ Feature generation parameters are stored in FeatureGen.params (dict). The dictio
 """
 class FeatureGen:
 
-    def __init__(self, params_dict=None, db_full_data=None, db_pred_data=None):
+    def __init__(self, params_dict=None, db_full_data=None, db_pred_data=None, conn=None):
         """Constructor for FeatureGen class."""
+
+        self.conn = conn # db connection object (required for streamlit integration)
 
         self.data_prep_objects_path = os.path.join(root_path, 'models', 'trad_ml', 'saved_data_prep_objects')
 
@@ -72,6 +74,7 @@ class FeatureGen:
         # set data prep objects according to params (-> load saved objects if name provided, otherwise set None)
         
         self._set_data_prep_objects() # set self.ohe, self.scaler, self.pca
+
 
     def set_params(self, new_params_dict, run_name=None):
         """Updates self.params with new parameters. Also updates self.run_name and loads data prep objects."""
@@ -109,10 +112,10 @@ class FeatureGen:
         
         # fetch data and store in class attribute
         if training:
-            self.db_full_data = dbu.select_query(query_str + ";") # note: can take a few seconds for complete data set
+            self.db_full_data = dbu.select_query(query_str + ";", conn=self.conn) # note: can take a few seconds for complete data set
             print(f" - training data set loaded from db, shape: {self.db_full_data.shape}")
         else:
-            self.db_pred_data = dbu.select_query(query_str + f" WHERE ms.team_id = {home_team_id} OR ms.team_id = {away_team_id};")
+            self.db_pred_data = dbu.select_query(query_str + f" WHERE ms.team_id = {home_team_id} OR ms.team_id = {away_team_id};", conn=self.conn)
             print(f" - prediction data set (home team id: {home_team_id}, away team id: {away_team_id}) loaded from db, shape: {self.db_pred_data.shape}")
 
         if return_df:

@@ -22,7 +22,11 @@ But since we are usually only handling a few rows at a time, we use (bulk) INSER
 Duplicate inserts are avoided by using the ON CONFLICT clause along with the table's appropriate constraint (i.e. in most casses the primary key).
 """
 
-def insert_countries(batchsize=1):
+# The reason that all db_inserts functions carry over the conn argument is because we can't use our dbu.read_config() in the streamlit app (due to streamlit's secrets management).
+# Instead we will create a connection object in the app and pass it to all functions which access the db.
+
+
+def insert_countries(batchsize=1, conn=None):
     """Read in countries.csv and insert new entries into the db."""
     # read in csv
     csv_path = os.path.join(root_path, 'data', 'scraped', 'fbref', 'countries', 'countries.csv')
@@ -33,10 +37,11 @@ def insert_countries(batchsize=1):
     n_ins, n_failed = _perform_batch_insert(df=countries_df, 
                                             table_name='countries', 
                                             constraint_name='countries_pkey',
-                                            batchsize=batchsize)
+                                            batchsize=batchsize,
+                                            conn=conn)
     return n_ins, n_failed
 
-def insert_leagues(batchsize=1):
+def insert_leagues(batchsize=1, conn=None):
     """Read in leagues.csv and insert new entries into the db."""
     # read in csv
     csv_path = os.path.join(root_path, 'data', 'scraped', 'fbref', 'leagues', 'leagues.csv')
@@ -48,10 +53,11 @@ def insert_leagues(batchsize=1):
     n_ins, n_failed = _perform_batch_insert(df=leagues_df, 
                                             table_name='leagues', 
                                             constraint_name='leagues_fbref_id_key',
-                                            batchsize=batchsize)
+                                            batchsize=batchsize,
+                                            conn=conn)
     return n_ins, n_failed
 
-def insert_teamwages(batchsize=25, include_archive=False, include_new=True):
+def insert_teamwages(batchsize=25, include_archive=False, include_new=True, conn=None):
     """Read in teamwages .csv-files and insert new entries into the db."""
     # read in data and concat to one df
     wages_path = os.path.join(root_path, 'data', 'scraped', 'fbref', 'wages')
@@ -74,10 +80,11 @@ def insert_teamwages(batchsize=25, include_archive=False, include_new=True):
                                             table_name='teamwages', 
                                             constraint_name='teamwages_pkey',
                                             colnames=clean_df.columns,
-                                            batchsize=batchsize)
+                                            batchsize=batchsize,
+                                            conn=conn)
     return n_ins, n_failed
 
-def insert_match_data(include_archive=False, include_new=True):
+def insert_match_data(include_archive=False, include_new=True, conn=None):
     """
     Read in new match data from files in /new and/or /archive.
     If required, inserts are made in the following tables in this order:
@@ -102,9 +109,9 @@ def insert_match_data(include_archive=False, include_new=True):
     # create cleaner instance
     cleaner = DataCleaning()
     # perform inserts in teams, matches and matchstats tables based on raw matches df
-    n_ins_teams, n_failed_teams = _insert_teams(raw_df, cleaner=cleaner)
-    n_ins_matches, n_failed_matches = _insert_matches(raw_df, cleaner=cleaner)
-    n_ins_ms, n_failed_ms = _insert_matchstats(raw_df, cleaner=cleaner)
+    n_ins_teams, n_failed_teams = _insert_teams(raw_df, cleaner=cleaner, conn=conn)
+    n_ins_matches, n_failed_matches = _insert_matches(raw_df, cleaner=cleaner, conn=conn)
+    n_ins_ms, n_failed_ms = _insert_matchstats(raw_df, cleaner=cleaner, conn=conn)
 
     # print summary
     print(60*'-')
@@ -112,7 +119,7 @@ def insert_match_data(include_archive=False, include_new=True):
     print(f"matches: {n_ins_matches} inserted, {n_failed_matches} rejected.")
     print(f"matchstats: {n_ins_ms} inserted, {n_failed_ms} rejected.")
 
-def _insert_teams(df, cleaner=None, batchsize=10):
+def _insert_teams(df, cleaner=None, batchsize=10, conn=None):
     """Insert new teams into teams table. (df: raw scraped matches df)"""
     # clean 
     if cleaner is None:
@@ -124,11 +131,12 @@ def _insert_teams(df, cleaner=None, batchsize=10):
                                             table_name='teams', 
                                             batchsize=batchsize, 
                                             constraint_name='teams_fbref_id_key',
-                                            colnames=clean_df.columns)
+                                            colnames=clean_df.columns,
+                                            conn=conn)
     
     return n_ins, n_failed
 
-def _insert_matches(df, cleaner=None, batchsize=50):
+def _insert_matches(df, cleaner=None, batchsize=50, conn=None):
     """Insert new matches into matches table. (df: raw matches df)"""
 
     # clean
@@ -141,10 +149,11 @@ def _insert_matches(df, cleaner=None, batchsize=50):
                                             table_name='matches', 
                                             batchsize=batchsize, 
                                             constraint_name='matches_fbref_id_key',
-                                            colnames=clean_df.columns)
+                                            colnames=clean_df.columns,
+                                            conn=conn)
     return n_ins, n_failed  
 
-def _insert_matchstats(df, cleaner=None, batchsize=100):
+def _insert_matchstats(df, cleaner=None, batchsize=100, conn=None):
     """Insert new matchstats into matchstats table.
        df: raw matches df
     """
@@ -158,10 +167,11 @@ def _insert_matchstats(df, cleaner=None, batchsize=100):
                                             table_name='matchstats', 
                                             constraint_name='matchstats_pkey',
                                             batchsize=batchsize, 
-                                            colnames=clean_df.columns)
+                                            colnames=clean_df.columns,
+                                            conn=conn)
     return n_ins, n_failed
      
-def _perform_batch_insert(df, table_name, colnames=None, constraint_name=None, batchsize=1):
+def _perform_batch_insert(df, table_name, colnames=None, constraint_name=None, batchsize=1, conn=None):
     """
     Utility function. Insert df into table in batches of batchsize.
         df: df to insert 
@@ -169,15 +179,18 @@ def _perform_batch_insert(df, table_name, colnames=None, constraint_name=None, b
         batchsize: number of rows to insert in one batch
     """
 
+    if conn is None:
+        conn = dbu.get_conn(type='DB_client')
+
     if colnames is None:
         # get column names from db, exclude 'id'-col (serial PK in tables)
-        colnames = dbu.select_query(f"SELECT * FROM {table_name} LIMIT 1;").columns
+        colnames = dbu.select_query(f"SELECT * FROM {table_name} LIMIT 1;", conn=conn).columns
     colnames_str = ', '.join([c for c in colnames if not c in ['id']])
 
     n_ins = 0 # counter for successfully inserted rows
     n_failed = 0 # counter for failed row inserts
     query_str = ""
-    conn = dbu.get_conn(type='DB_client')
+    
     cursor = conn.cursor()
 
     # iterate over df rows and build query string / insert if batchsize is reached
