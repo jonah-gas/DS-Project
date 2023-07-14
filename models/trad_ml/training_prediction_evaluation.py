@@ -171,17 +171,19 @@ class ModelPrediction:
     def __init__(self):
         pass
 
-    def predict_prob(self, X_test, model,dif=True):
+    def predict_prob(self, X_test, model, dif=False, goal_prob = False):
         """
         Predicts the probabilities of home win, draw, and away win for given test data.
         
         Arguments:
         - X_test: The test data to make predictions on.
         - model: The trained model to use for predictions.
-        - dif (optional): Indicates whether to perform difference-based predictions. Default is True.
+        - dif (optional): Indicates whether to perform difference-based predictions. Default is False.
+        - goal_prob: Return goal probabilities. Default is False. 
         
         Returns:
         - The predicted probabilities of home win, draw, and away win.
+        - The predicted probabilities of goals for home and away team seperatly.
         """
 
         if dif is not True :
@@ -216,6 +218,11 @@ class ModelPrediction:
             df_result_prob['draw_prob'] = draw_prob
             df_result_prob['away_winning_prob'] = away_winning_prob
 
+            if goal_prob:
+                return df_result_prob, goal_prob_home, goal_prob_away
+            else:
+                return df_result_prob
+
         else:
             # if xgb model
             if model.__class__.__name__ in ['XGBClassifier', 'XGBRegressor', 'GradientBoostingClassifier', 'GradientBoostingRegressor']:
@@ -249,7 +256,11 @@ class ModelPrediction:
             df_result_prob['draw_prob'] = draw_prob_dif
             df_result_prob['away_winning_prob'] = away_winning_prob_dif
         
-        return df_result_prob
+            if goal_prob:
+                return df_result_prob
+            else:
+                return df_result_prob
+    
         
 class ModelEvaluation:
     def __init__(self):
