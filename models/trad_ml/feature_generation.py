@@ -59,12 +59,14 @@ Feature generation parameters are stored in FeatureGen.params (dict). The dictio
 """
 class FeatureGen:
 
-    def __init__(self, params_dict=None, db_full_data=None, db_pred_data=None, conn=None):
+    def __init__(self, params_dict=None, db_full_data=None, db_pred_data=None, conn=None, dpo_path=None):
         """Constructor for FeatureGen class."""
 
         self.conn = conn # db connection object (required for streamlit integration)
-
-        self.data_prep_objects_path = os.path.join(root_path, 'models', 'trad_ml', 'saved_data_prep_objects')
+        if dpo_path is not None:
+            self.data_prep_objects_path = dpo_path
+        else:
+            self.data_prep_objects_path = os.path.join(root_path, 'models', 'trad_ml', 'saved_data_prep_objects') 
 
         # set self.params, self.run_name and load data prep objects according to params (self.ohe, self.scaler, self.pca)
         self.set_params(new_params_dict=params_dict) 
@@ -72,8 +74,8 @@ class FeatureGen:
         self.db_pred_data = db_pred_data # db data set for prediction (subset of db_full_data relevant for predictions) <- loaded later if not provided
 
         # set data prep objects according to params (-> load saved objects if name provided, otherwise set None)
-        
-        self._set_data_prep_objects() # set self.ohe, self.scaler, self.pca
+        if params_dict is not None:
+            self._set_data_prep_objects() # set self.ohe, self.scaler, self.pca
 
 
     def set_params(self, new_params_dict, run_name=None):
@@ -120,7 +122,6 @@ class FeatureGen:
 
         if return_df:
             return self.db_full_data if training else self.db_pred_data
-
     
     # primary function 
     def generate_features(self, 
@@ -276,6 +277,7 @@ class FeatureGen:
 
         X_train, X_test, y_train, y_test = (None, None, None, None) if not training else self._train_test_split(X, y, cutoff_date=self.params['tt_split_cutoff_date'], test_season=self.params['tt_split_test_season'])
         if print_logs and training: print(f" - X_train, X_test, y_train, y_test shapes after train/test split: {X_train.shape}, {X_test.shape}, {y_train.shape}, {y_test.shape}")
+        
         ### missing value imputation ###########################################################################################
 
         # note: only use information from the training set!
@@ -462,6 +464,7 @@ class FeatureGen:
         """
         Loads data prep objects into instance variables according to the (file-)names provided in self.params. (Set None if no name is provided).
         """
+        
         self.ohe = self._load_data_prep_object(self.params['ohe_name']) if self.params['ohe_name'] is not None else None
         self.scaler = self._load_data_prep_object(self.params['scaler_name']) if self.params['scaler_name'] is not None else None
         self.pca = self._load_data_prep_object(self.params['pca_name']) if self.params['pca_name'] is not None else None
