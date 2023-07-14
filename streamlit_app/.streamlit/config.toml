@@ -1,0 +1,7 @@
+[theme]
+base="dark"
+primaryColor="#FFD700"
+
+
+[runner]
+magicEnabled=false
