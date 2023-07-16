@@ -9,6 +9,9 @@ import streamlit as st
 import database_server.db_utilities as dbu
 from models.trad_ml.feature_generation import FeatureGen
 
+import plotly.express as px
+import pandas as pd
+
 
 
 ####################
@@ -41,6 +44,89 @@ def get_feature_gen_instance():
     return fg
 
 #####################
+# plots and tables  #
+#####################
+
+def get_outcome_prob_plot(ypred, height=None):
+    # ypred is expected to be a dataframe with columns 'home_win_prob', 'draw_prob', 'away_win_prob' and a single row with the predicted values
+
+    # prepare dataframe
+    ypred = ypred.rename(columns={'home_winning_prob': 'Home Win', 'draw_prob': 'Draw', 'away_winning_prob': 'Away Win'})
+    ypred = ypred.T.reset_index().rename(columns={'index': 'outcome', 0: 'probability'})
+    ypred['probability'] = ypred['probability'].apply(lambda x: round(x*100, 2))
+
+    plot = px.bar(ypred, x='outcome', y='probability')
+
+    # plot formatting
+    plot.update_layout( showlegend=False, 
+                        plot_bgcolor='rgba(0, 0, 0, 0)',
+                        paper_bgcolor='rgba(0, 0, 0, 0)',
+                        xaxis={'showgrid': False}, 
+                        yaxis={'showticklabels': False, 'zeroline': True, 'showgrid': False, 'zerolinecolor': 'gold', 'zerolinewidth': 1},
+                        font={'family': 'sans-serif'},
+                        coloraxis_showscale=False,
+                        margin={'l': 0, 'r': 45, 't': 25, 'b': 0},
+                        height=height,
+                        clickmode='none', hovermode=False, dragmode=False # disable unwanted interaction
+                       )
+
+    # format x and y axis
+    plot.update_xaxes(title_text='', tickfont={'size': 14})
+    plot.update_yaxes(title_text='')
+
+    # bar styling and labels
+    bar_alpha = 0.75
+    win_color = f"rgba(127,255,0, {bar_alpha})" # green?
+    draw_color = f"rgba(255,208,112, {0.1})" # gold w/ v. low alpha?
+    loss_color = f"rgba(220,20,60, {bar_alpha})" # red?
+    plot.update_traces(texttemplate='%{y:.2f}%', 
+                       textposition='outside',#['outside' if v < 15 else 'inside' for v in ypred['probability']], # bar labels outside if bar is too small
+                       textfont={'size': 12, 'color':'gold'},
+                       marker={'color': [win_color if ypred['probability'].iloc[0] > ypred['probability'].iloc[2] else loss_color, # home win bar
+                                         draw_color, # draw bar
+                                         win_color if ypred['probability'].iloc[2] > ypred['probability'].iloc[0] else loss_color], # away win bar
+                                'line':{'color': 'gold', 'width': 1}},
+                        width=0.75 # bar width
+                        )
+    # bar labels outside if bar is too small
+    plot.update_traces(cliponaxis=False)
+    return plot
+
+def get_goals_prob_plot(goals_home_pred, goals_away_pred, height=None):
+    ### prepare dataframe
+
+    # join into one df
+    df = pd.concat([goals_home_pred, goals_away_pred], axis=0, ignore_index=True)
+    df = df.fillna(0) # replace NaNs with 0s (occurs only if preds have different column counts)
+    # transpose and rename columns
+    df = df.T.reset_index().rename(columns={'index': 'n_goals', 0: 'Home', 1: 'Away'})
+    
+    # plot
+    plot = px.bar(df, x='n_goals', y=['Home', 'Away'], 
+                  barmode='group', color_discrete_sequence=['lightblue', 'purple'])
+
+    plot.update_layout( showlegend=True, 
+                        plot_bgcolor='rgba(0, 0, 0, 0)',
+                        paper_bgcolor='rgba(0, 0, 0, 0)',
+                        xaxis={'showgrid': False, 'dtick': 1, 'title': 'number of goals'}, 
+                        yaxis={'showticklabels': False, 'showgrid': False, 
+                               'zeroline': True, 'zerolinecolor': 'gold', 'zerolinewidth': 1,
+                               'title': 'probability'},
+                        hoverlabel={'font_color': 'gold'},
+                        font={'family': 'sans-serif'},
+                        legend={'xanchor': 'right', 'yanchor': 'top', 'title': None},
+                        margin={'l': 0, 'r': 45, 't': 25, 'b': 0},
+                        height=height,
+                        clickmode='none', hovermode='closest', dragmode=False # disable unwanted interaction
+                        )
+    plot.update_traces(marker={'line':{'color': 'gold', 'width': 1}},
+                       hovertemplate='%{y:.2f}<extra></extra>')
+    
+
+    return plot
+
+
+#####################
 # styling utilities #
 #####################
 
@@ -54,7 +140,15 @@ def aligned_text(text, align='center', bold=False, color=None, font_size=None):
         text = f"<span style='font-size:{font_size};'>{text}</span>"
     return st.markdown(f'<div style="text-align: {align};">{text}</div>', unsafe_allow_html=True)
 
-
+# hide fullscreen option for images (-> should be called before plots are rendered)
+def hide_image_fullscreen_option():
+    css = '''
+        <style>
+        button[title="View fullscreen"]{
+            visibility: hidden;}
+        </style>
+        '''
+    st.markdown(css, unsafe_allow_html=True)
 
 
 

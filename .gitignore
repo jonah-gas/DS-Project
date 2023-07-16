@@ -1,6 +1,9 @@
 # db server credentials etc.
 /database_server/config/
 
+# streamlit secrets file
+/streamlit_app/.streamlit/secrets.toml
+
 # compilation-related files (in any subfolders)
 __pycache__/
 *.pyc
@@ -9,3 +12,4 @@ __pycache__/
 /related/
 /archive/
 /test_folder/
+

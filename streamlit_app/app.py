@@ -18,11 +18,6 @@ import streamlit_app.app_functions as appf # <- contains functions used in our a
 # debug
 #st.write(f"root_path: {root_path}")
 
-### Entry page ###
-
-### streamlit setup ###
-
-
 ### initialize session state with cached function calls ###
 # db connection object
 if 'conn' not in st.session_state:
@@ -31,11 +26,10 @@ if 'conn' not in st.session_state:
 if 'teams_df' not in st.session_state:
     st.session_state['teams_df'], st.session_state['teams_name2id'], st.session_state['teams_id2name'] = appf.get_teams_data() # cached
 
-# load teams data
 
-
-
+### page ###
 st.write("# Header - Our Soccer Prediction App (Wow!)")
 st.sidebar.success("Select page above.")
 
+# debug
 st.write(st.session_state)
