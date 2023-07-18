@@ -11,6 +11,7 @@ from models.trad_ml.feature_generation import FeatureGen
 
 import plotly.express as px
 import pandas as pd
+import pickle as pkl
 
 ####################
 # cached functions #
@@ -45,6 +46,33 @@ def get_feature_gen_instance():
     # load full dataset
     fg.load_data()
     return fg
+
+#####################
+# non-cached utils  #
+#####################
+
+def load_info_dict(model_dict_name):
+
+    info_dict_path = os.path.join(root_path, "models", "trad_ml", "sweep_results")
+    d = pkl.load(open(os.path.join(info_dict_path, f"{model_dict_name}.pkl"), "rb"))
+
+    # since info dicts are often optimization sweep results, they might not yet have the data prep object names defined -> define them here via run name
+    if d['fg_config']['apply_ohe'] and d['fg_config']['ohe_name'] is None:
+        d['fg_config']['ohe_name'] = f"OneHotEncoder_{d['run_name']}"
+
+    if d['fg_config']['apply_scaler'] and d['fg_config']['scaler_name'] is None:
+        d['fg_config']['scaler_name'] = f"StandardScaler_{d['run_name']}"
+
+    if d['fg_config']['apply_pca'] and d['fg_config']['pca_name'] is None:
+        d['fg_config']['pca_name'] = f"PCA_{d['run_name']}"
+
+    return d
+
+
+def load_model(model_name):
+    models_path = os.path.join(root_path, "models", "trad_ml", "saved_models")
+    return pkl.load(open(os.path.join(models_path, f"{model_name}.pkl"), "rb"))
+
 
 #####################
 # plots and tables  #
