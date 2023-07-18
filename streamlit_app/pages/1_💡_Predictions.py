@@ -1,7 +1,7 @@
 import os
 import sys
 
-root_path = os.path.abspath(os.path.join('..')) # <- adjust such that root_path always points at the root project dir (i.e. if current file is two folders deep, use '../..'). 
+root_path = os.path.abspath(os.path.join('')) # <- adjust such that root_path always points at the root project dir (i.e. if current file is two folders deep, use '../..'). 
 if root_path not in sys.path:
     sys.path.append(root_path)
 
@@ -11,9 +11,6 @@ import streamlit_app.app_functions as appf # <- contains functions used in our a
 import models.trad_ml.training_prediction_evaluation as tpe
 import pickle as pkl
 
-
-# DEBUG
-st.write(f"root_path: {root_path}")
 
 # hide 'view fullscreen' option for images
 appf.hide_image_fullscreen_option()
@@ -80,20 +77,14 @@ with st.form(key="team_selection", clear_on_submit=False):
             c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns(spec=[1, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 1]) # columns for image positioning
             with c2:
                 # home team logo (if available)
-                if os.path.isfile(os.path.join(root_path, "streamlit_app", "team_logos", f"{home_team_id}.png")):
-                    st.image(f'team_logos/{home_team_id}.png')#), width=150)
-                else:
-                    st.image(f'team_logos/placeholder_transparent.png')#, width=150)    
+                
+                appf.show_logo(home_team_id)
             with c5:
                 st.write("") # empty column for spacing
                 appf.aligned_text("vs.", align="center", bold=True)#, color="#FFD700")            
             with c8:
-                # away team logo (if available)
-                if os.path.isfile(os.path.join(root_path, "streamlit_app", "team_logos", f"{away_team_id}.png")):
-                    st.image(f'team_logos/{away_team_id}.png')#, width=150)
-                else:
-                    st.image(f'team_logos/placeholder_transparent.png')#, width=150)
-    
+                appf.show_logo(away_team_id)
+
 
         # predict
         predictor = tpe.ModelPrediction()

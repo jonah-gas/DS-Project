@@ -1,22 +1,23 @@
+# Run: streamlit run streamlit_app\app.py
+# (important: streamlit run app.py will mess up relative paths for imports)
+
 import os
 import sys
 
-root_path = os.path.abspath(os.path.join('..')) # <- adjust such that root_path always points at the root project dir (i.e. if current file is two folders deep, use '../..'). 
+root_path = os.path.abspath(os.path.join('')) # <- adjust such that root_path always points at the root project dir
 if root_path not in sys.path:
     sys.path.append(root_path)
 
-import database_server.db_utilities as dbu 
+import streamlit as st
 
 import numpy as np
 import pandas as pd
 
-import streamlit as st
 import streamlit_app.app_functions as appf # <- contains functions used in our app
 
 
 
-# debug
-#st.write(f"root_path: {root_path}")
+
 
 ### initialize session state with cached function calls ###
 # db connection object
