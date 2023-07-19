@@ -78,6 +78,17 @@ def update_session_state_tradml_selections(home_id, away_id):
     st.session_state['trad_ml_home_team_select_id'] = home_id
     st.session_state['trad_ml_away_team_select_id'] = away_id
 
+def init_session_state():
+    # db connection object
+    if 'conn' not in st.session_state:
+        st.session_state['conn'] = get_db_conn()
+    # teams data
+    if 'teams_df' not in st.session_state:
+        st.session_state['teams_df'], st.session_state['teams_name2id'], st.session_state['teams_id2name'] = get_teams_data() # cached
+    # tradml preds: selected team ids
+    if 'trad_ml_home_team_select_id' not in st.session_state:
+        update_session_state_tradml_selections(home_id=135, away_id=122) # default: Dortmund vs. Bayern
+
 #####################
 # plots and tables  #
 #####################

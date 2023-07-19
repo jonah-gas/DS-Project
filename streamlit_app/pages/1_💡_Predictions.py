@@ -15,6 +15,9 @@ import pickle as pkl
 # hide 'view fullscreen' option for images
 appf.hide_image_fullscreen_option()
 
+### session state updates ###
+appf.init_session_state()
+
 # load models in session state (if not already loaded)
 if 'trad_ml_models' not in st.session_state:
     # define model dict (contains loaded models as well as model-specific params / info)
@@ -30,13 +33,7 @@ if 'trad_ml_models' not in st.session_state:
         
         'LogReg (no split)':        {'info': appf.load_info_dict('logreg_all_train'),
                                      'model': appf.load_model('MultiOutputClassifier_logreg_all_train')}
-        
-
     }
-
-### definitions ###
-team_select_options = st.session_state['teams_df'].sort_values(['country', 'name'])['id'].tolist()
-team_select_format_func = lambda id: f"({st.session_state['teams_df'].query(f'id=={id}')['country'].values[0]}) {st.session_state['teams_id2name'][id]}"
 
 ### instantiate fg object ###
 fg = appf.get_feature_gen_instance()
@@ -53,12 +50,14 @@ with st.sidebar.form(key="sidebar_form", clear_on_submit=False):
         st.session_state['trad_ml_skip_pred_button'] = True # immediately update predictions
 
 ### team selection 
-# get team display strings for selectboxes
-team_display_strings = st.session_state['teams_df']['name'].tolist()
 st.write("# Header - Predictions using traditional ML models")
 
 with st.form(key="team_selection", clear_on_submit=False):
-    #appf.aligned_text("Select teams for prediction:")
+
+    # define selection box options / formatting
+    team_select_options = st.session_state['teams_df'].sort_values(['country', 'name'])['id'].tolist()
+    team_select_format_func = lambda id: f"({st.session_state['teams_df'].query(f'id=={id}')['country'].values[0]}) {st.session_state['teams_id2name'][id]}"
+
     c1, c2, c3 = st.columns(3)
     with c1:
         home_team_id = st.selectbox(
