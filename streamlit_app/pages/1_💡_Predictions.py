@@ -41,6 +41,17 @@ team_select_format_func = lambda id: f"({st.session_state['teams_df'].query(f'id
 ### instantiate fg object ###
 fg = appf.get_feature_gen_instance()
 
+### sidebar ###
+with st.sidebar.form(key="sidebar_form", clear_on_submit=False):
+    bar_label_type = st.radio(key=f"radio_bar_label_type", 
+                              label="Bar labels:", 
+                              horizontal=True, 
+                              options=["percentage", "decimal odds", "fractional odds"], 
+                              index=0)
+    submitted = st.form_submit_button("Change", use_container_width=True)
+    if submitted:
+        st.session_state['trad_ml_skip_pred_button'] = True # immediately update predictions
+
 ### team selection 
 # get team display strings for selectboxes
 team_display_strings = st.session_state['teams_df']['name'].tolist()
@@ -54,14 +65,15 @@ with st.form(key="team_selection", clear_on_submit=False):
             label="Home team:",
             options=team_select_options,
             format_func=team_select_format_func,
-            index=7
+            index=team_select_options.index(st.session_state['trad_ml_home_team_select_id'])
         )
+
     with c3:
         away_team_id = st.selectbox(
             label="Away team:",
             options=team_select_options,
             format_func=team_select_format_func,
-            index=16
+            index=team_select_options.index(st.session_state['trad_ml_away_team_select_id'])
         )
 
     # disallow same team as home and away
@@ -70,15 +82,18 @@ with st.form(key="team_selection", clear_on_submit=False):
 
     # submit button
     submitted = st.form_submit_button("Predict Matchup", use_container_width=True)
+    if st.session_state['trad_ml_skip_pred_button']: 
+        submitted = True
+        st.session_state['trad_ml_skip_pred_button'] = False
 
     if submitted and home_team_id != away_team_id:
-        
-        # display name & logo of selected teams
+        # enter selected team ids into session state
+        appf.update_session_state_tradml_selections(home_team_id, away_team_id)
+
+        # display names & logos of selected teams
         with st.container():
             c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns(spec=[1, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 1]) # columns for image positioning
             with c2:
-                # home team logo (if available)
-                
                 appf.show_logo(home_team_id)
             with c5:
                 st.write("") # empty column for spacing
@@ -86,8 +101,12 @@ with st.form(key="team_selection", clear_on_submit=False):
             with c8:
                 appf.show_logo(away_team_id)
 
+        # create model tabs
         model_names = list(st.session_state['trad_ml_models'].keys())
         tabs = st.tabs(model_names)
+
+        # define result lists
+        outcome_preds, goals_home_preds, goals_away_preds = [], [], []
         for i, model_name in enumerate(model_names):
 
             ### prediction ### 
@@ -95,7 +114,10 @@ with st.form(key="team_selection", clear_on_submit=False):
             fg.set_params(st.session_state['trad_ml_models'][model_name]['info']['fg_config'])
             X_pred = fg.generate_features(incl_non_feature_cols=False, home_team_id=home_team_id, away_team_id=away_team_id, print_logs=False)
             predictor = tpe.ModelPrediction() # instantiate predictor object
-            outcome_pred, goals_home_pred, goals_away_pred = predictor.predict_prob(X_pred, st.session_state['trad_ml_models'][model_name]['model'], dif=False, goal_prob=True)
+            out, gh, ga = predictor.predict_prob(X_pred, st.session_state['trad_ml_models'][model_name]['model'], dif=False, goal_prob=True)
+            outcome_preds.append(out)
+            goals_home_preds.append(gh)
+            goals_away_preds.append(ga)
 
             ### display prediction results ###
             with tabs[i]:
@@ -103,10 +125,15 @@ with st.form(key="team_selection", clear_on_submit=False):
                     subtab1, subtab2 = st.tabs(["Match Outcome", "Number of Goals"])
                     with subtab1:
                         # home win / draw / away win probabilities plot
-                        st.plotly_chart(appf.get_outcome_prob_plot(outcome_pred, height=300), use_container_width=True, config={'displayModeBar': False})
+                        st.plotly_chart(appf.get_outcome_prob_plot(outcome_preds[i], label_type=bar_label_type, height=350), use_container_width=True, config={'displayModeBar': False})
                     with subtab2:
                         # n_goal distribution plot
-                        st.plotly_chart(appf.get_goals_prob_plot(goals_home_pred, goals_away_pred, height=300), use_container_width=True, config={'displayModeBar': False})
+                        st.plotly_chart(appf.get_goals_prob_plot(goals_home_preds[i], 
+                                                                 goals_away_preds[i], 
+                                                                 home_name=st.session_state['teams_id2name'][home_team_id], 
+                                                                 away_name=st.session_state['teams_id2name'][away_team_id],
+                                                                 height=350), 
+                                        use_container_width=True, config={'displayModeBar': False})
 
 
 

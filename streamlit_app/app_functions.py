@@ -74,19 +74,32 @@ def load_model(model_name):
     return pkl.load(open(os.path.join(models_path, f"{model_name}.pkl"), "rb"))
 
 
+def update_session_state_tradml_selections(home_id, away_id):
+    st.session_state['trad_ml_home_team_select_id'] = home_id
+    st.session_state['trad_ml_away_team_select_id'] = away_id
+
 #####################
 # plots and tables  #
 #####################
 
-def get_outcome_prob_plot(ypred, height=None):
+def get_outcome_prob_plot(ypred, label_type='probability', height=None):
     # ypred is expected to be a dataframe with columns 'home_win_prob', 'draw_prob', 'away_win_prob' and a single row with the predicted values
 
     # prepare dataframe
     ypred = ypred.rename(columns={'home_winning_prob': 'Home Win', 'draw_prob': 'Draw', 'away_winning_prob': 'Away Win'})
     ypred = ypred.T.reset_index().rename(columns={'index': 'outcome', 0: 'probability'})
-    ypred['probability'] = ypred['probability'].apply(lambda x: round(x*100, 2))
-
-    plot = px.bar(ypred, x='outcome', y='probability')
+        # bar labels
+    if label_type == 'percentage':
+        ypred[label_type] = ypred['probability'].apply(lambda x: f"{round(x*100, 2):.2f} %")
+    elif label_type == 'decimal odds':
+        ypred[label_type] = ypred['probability'].apply(lambda x: f"{round(1/x, 2):.2f}")
+    elif label_type == 'fractional odds': # e.g. probability of 0.5 -> "2/1"
+        ypred[label_type] = ypred['probability'].apply(lambda x: f"{round(1/x, 2):.2f}:1" if x > 0.5 else f"1:{round(1/(1-x), 2):.2f}")
+    else:
+        raise ValueError(f"Unknown bar label type '{label_type}'")
+    
+    # create plot
+    plot = px.bar(ypred, x='outcome', y='probability', text=ypred[label_type])
 
     # plot formatting
     plot.update_layout( showlegend=False, 
@@ -105,13 +118,12 @@ def get_outcome_prob_plot(ypred, height=None):
     plot.update_xaxes(title_text='', tickfont={'size': 14})
     plot.update_yaxes(title_text='')
 
-    # bar styling and labels
+    # bar / label styling
     bar_alpha = 0.75
     win_color = f"rgba(127,255,0, {bar_alpha})" # green?
     draw_color = f"rgba(255,208,112, {0.1})" # gold w/ v. low alpha?
     loss_color = f"rgba(220,20,60, {bar_alpha})" # red?
-    plot.update_traces(texttemplate='%{y:.2f}%', 
-                       textposition='outside',#['outside' if v < 15 else 'inside' for v in ypred['probability']], # bar labels outside if bar is too small
+    plot.update_traces(textposition='outside',#['outside' if v < 15 else 'inside' for v in ypred['probability']], # bar labels outside if bar is too small
                        textfont={'size': 12, 'color':'gold'},
                        cliponaxis=False, 
                        marker={'color': [win_color if ypred['probability'].iloc[0] > ypred['probability'].iloc[2] else loss_color, # home win bar
@@ -122,17 +134,19 @@ def get_outcome_prob_plot(ypred, height=None):
                         )
     return plot
 
-def get_goals_prob_plot(goals_home_pred, goals_away_pred, height=None):
+def get_goals_prob_plot(goals_home_pred, goals_away_pred, home_name, away_name, height=None):
     ### prepare dataframe
 
     # join into one df
     df = pd.concat([goals_home_pred, goals_away_pred], axis=0, ignore_index=True)
     df = df.fillna(0) # replace NaNs with 0s (occurs only if preds have different column counts)
     # transpose and rename columns
-    df = df.T.reset_index().rename(columns={'index': 'n_goals', 0: 'Home', 1: 'Away'})
+    home_col_name = f"{home_name} (home)"
+    away_col_name = f"{away_name} (away)"
+    df = df.T.reset_index().rename(columns={'index': 'n_goals', 0: home_col_name, 1: away_col_name})
     
     # plot
-    plot = px.bar(df, x='n_goals', y=['Home', 'Away'], 
+    plot = px.bar(df, x='n_goals', y=[home_col_name, away_col_name], 
                   barmode='group', color_discrete_sequence=['lightblue', 'purple'])
 
     plot.update_layout( showlegend=True, 
