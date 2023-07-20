@@ -93,6 +93,27 @@ def init_session_state():
 # plots and tables  #
 #####################
 
+"""
+# get fractional odds from probability (e.g. probability of 0.5 -> "1/1")
+def get_fractional_odds(prob, rounding=1):
+    pass
+"""
+# get moneyline odds from probability (e.g. probability of 0.5 -> "+100")
+def get_moneyline_odds(prob, rounding=2):
+    prob = round(prob, rounding)
+
+    if prob == 1:
+        return "-10000"
+    if prob == 0:
+        return "+10000"
+    
+    if prob <= 0.5:
+        odds = (100 / (prob / 1)) - 100
+        return f"+{round(odds)}"
+    else:
+        odds = prob*100 / (1 - prob)
+        return f"-{round(odds)}"
+
 def get_outcome_prob_plot(ypred, label_type='probability', height=None):
     # ypred is expected to be a dataframe with columns 'home_win_prob', 'draw_prob', 'away_win_prob' and a single row with the predicted values
 
@@ -104,8 +125,10 @@ def get_outcome_prob_plot(ypred, label_type='probability', height=None):
         ypred[label_type] = ypred['probability'].apply(lambda x: f"{round(x*100, 2):.2f} %")
     elif label_type == 'decimal odds':
         ypred[label_type] = ypred['probability'].apply(lambda x: f"{round(1/x, 2):.2f}")
-    elif label_type == 'fractional odds': # e.g. probability of 0.5 -> "2/1"
-        ypred[label_type] = ypred['probability'].apply(lambda x: f"{round(1/x, 2):.2f}:1" if x > 0.5 else f"1:{round(1/(1-x), 2):.2f}")
+    #elif label_type == 'fractional odds': # e.g. probability of 0.5 -> "1/1"
+    #    ypred[label_type] = ypred['probability'].apply(lambda x: get_fractional_odds(prob=x, rounding=2))
+    elif label_type == 'moneyline odds': # e.g. probability of 0.5 -> "+100"
+        ypred[label_type] = ypred['probability'].apply(lambda x: get_moneyline_odds(prob=x, rounding=2))
     else:
         raise ValueError(f"Unknown bar label type '{label_type}'")
     
@@ -184,8 +207,30 @@ def get_goals_prob_plot(goals_home_pred, goals_away_pred, home_name, away_name, 
 # styling utilities #
 #####################
 
-# show logo
-def show_logo(team_id, width=None):
+def show_app_logo_sidebar(vertical_pos='bottom'):
+    st.markdown(
+        f"""
+        <style>
+            [data-testid="stSidebarNav"] {{
+                background-image: url(https://i.imgur.com/C8zF3Bn.png);
+                background-repeat: no-repeat;
+                background-size: 150px; /* Adjust the size of the image */
+                padding-top: 0px; /* Adjust the padding from the top */
+                padding-left: 0px; /* Adjust the padding from the left */
+                background-position: center top; /* Position the image to the left top */
+            }}
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+def show_app_logo(width=150, use_column_width=False):
+    app_logo_path = 'streamlit_app/app_logo.png'
+    st.image(app_logo_path, width=width, use_column_width=True) # use_column_width takes precedence over width
+
+
+# show team logo
+def show_team_logo(team_id, width=None):
     logos_path = 'streamlit_app/team_logos/' # hardcoding necessary, st.image() doesn't seem to work with os.path.join() outputs...
     if os.path.isfile(os.path.join(root_path, "streamlit_app", "team_logos", f"{team_id}.png")):
         st.image(f"{logos_path}{team_id}.png", width=width)#), width=150)
@@ -213,7 +258,11 @@ def hide_image_fullscreen_option():
     st.markdown(css, unsafe_allow_html=True)
 
 
-
+# keep sidebar extended
+def keep_sidebar_extended():
+    st.markdown("""
+        <style>div[data-testid='stSidebarNav'] ul {max-height:none}</style>
+        """, unsafe_allow_html=True)
 
 
 
