@@ -96,9 +96,9 @@ def sequence_models(team1, team2, clubs, rearrange_list, scale_df, result_dict, 
         print((prediction1 + prediction2))
         prediction = torch.nn.functional.softmax((prediction1 + prediction2), dim = 0)
         
-    pd_to_return = pd.DataFrame({"Prob win": float(prediction[0]),
-                                "Prob loss": float(prediction[1]),
-                                "Prob draw": float(prediction[2])}, index = [0])
+    pd_to_return = pd.DataFrame({"home_win_prob": float(prediction[0]),
+                                "draw_prob": float(prediction[2]),
+                                "away_win_prob": float(prediction[1])}, index = [0])
     return pd_to_return
 
 
