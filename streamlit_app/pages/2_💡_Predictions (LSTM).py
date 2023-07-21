@@ -8,32 +8,49 @@ if root_path not in sys.path:
 import streamlit as st
 import streamlit_app.app_functions as appf # <- contains functions used in our app
 
-# set page config
-st.set_page_config(initial_sidebar_state='expanded')
 
-# hide 'view fullscreen' option for images
+### page setup (visual) ###
+st.set_page_config(initial_sidebar_state='expanded')
 appf.hide_image_fullscreen_option()
+appf.show_app_logo_sidebar(vertical_pos='top')
 
 ### session state updates ###
-appf.init_session_state()
-st.session_state['trad_ml_skip_pred_button'] = True
-# load model ???
+appf.init_session_state(reset_lstm_skip_pred_button=False)
+
+### load model(s) in session state (if not already loaded)
 """
+if 'lstm_models' not in st.session_state:
+    st.session_state['lstm_models'] = {
+        'LSTM**':   {'model': appf.load_lstm_model('asdf')},
+        'LSTM':     {'model': appf.load_lstm_model('jklö')}
+    }
+"""
+
+### load lstm data ###
+
 ### sidebar ###
-with st.sidebar.form(key="sidebar_form", clear_on_submit=False):
-    bar_label_type = st.radio(key=f"radio_bar_label_type", 
-                              label="Bar labels:", 
-                              horizontal=True, 
-                              options=["percentage", "decimal odds", "fractional odds"], 
-                              index=0)
+bar_label_type_options = ["percentage", 
+                         "decimal odds", 
+                         #"fractional odds", # todo: implement in app_functions.py
+                         "moneyline odds"]
+
+with st.sidebar.form(key="lstm_sidebar_form", clear_on_submit=False):
+    st.session_state['bar_label_type'] = st.radio(key=f"lstm_radio_bar_label_type", 
+                                                  label="W/D/L prediction format:", 
+                                                  horizontal=False, 
+                                                  options=bar_label_type_options, 
+                                                  index=bar_label_type_options.index(st.session_state['bar_label_type']))
     submitted = st.form_submit_button("Change", use_container_width=True)
     if submitted:
-        st.session_state['trad_ml_skip_pred_button'] = True # immediately update predictions
+        st.session_state['lstm_skip_pred_button'] = True # immediately update predictions (without requiring button click)
+    
+
+### header & text above selection ###
+appf.header_txt("Predictions (LSTM)", lvl=1, align="center", color=None)
+st.write('') # spacing
 
 ### team selection 
-st.write("# Predictions using an LSTM model")
-
-with st.form(key="team_selection", clear_on_submit=False):
+with st.form(key="lstm_team_selection", clear_on_submit=False):
 
     # define selection box options / formatting
     team_select_options = st.session_state['teams_df'].sort_values(['country', 'name'])['id'].tolist()
@@ -53,7 +70,7 @@ with st.form(key="team_selection", clear_on_submit=False):
             label="Away team:",
             options=team_select_options,
             format_func=team_select_format_func,
-            index=team_select_options.index(st.session_state['trad_ml__away_team_select_id'])
+            index=team_select_options.index(st.session_state['trad_ml_away_team_select_id'])
         )
 
     # disallow same team as home and away
@@ -62,9 +79,9 @@ with st.form(key="team_selection", clear_on_submit=False):
 
     # submit button
     submitted = st.form_submit_button("Predict Matchup", use_container_width=True)
-    if 'trad_ml_skip_pred_button' in st.session_state and st.session_state['trad_ml_skip_pred_button']: 
+    if 'lstm_skip_pred_button' in st.session_state and st.session_state['lstm_skip_pred_button']: 
         submitted = True
-        st.session_state['trad_ml_skip_pred_button'] = False
+        st.session_state['lstm_skip_pred_button'] = False
 
     if submitted and home_team_id != away_team_id:
         # enter selected team ids into session state
@@ -74,15 +91,15 @@ with st.form(key="team_selection", clear_on_submit=False):
         with st.container():
             c1, c2, c3, c4, c5, c6, c7, c8, c9 = st.columns(spec=[1, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 1]) # columns for image positioning
             with c2:
-                appf.show_logo(home_team_id)
+                appf.show_team_logo(home_team_id)
             with c5:
                 st.write("") # empty column for spacing
                 appf.aligned_text("vs.", align="center", bold=True)#, color="#FFD700")            
             with c8:
-                appf.show_logo(away_team_id)
+                appf.show_team_logo(away_team_id)
 
         # create model tabs
-        model_names = list(st.session_state['trad_ml_models'].keys())
+        model_names = list(st.session_state['lstm_models'].keys())
         tabs = st.tabs(model_names)
 
         # define result lists
@@ -90,21 +107,39 @@ with st.form(key="team_selection", clear_on_submit=False):
         for i, model_name in enumerate(model_names):
 
             ### prediction ### 
+            """
             # set fg params and generate features for prediction
-
-            X_pred = ...
-            predictor = ...
-            outcome_pred = ...
-
+            fg.set_params(st.session_state['trad_ml_models'][model_name]['info']['fg_config'])
+            X_pred = fg.generate_features(incl_non_feature_cols=False, home_team_id=home_team_id, away_team_id=away_team_id, print_logs=False)
+            predictor = tpe.ModelPrediction() # instantiate predictor object
+            out, gh, ga = predictor.predict_prob(X_pred, st.session_state['trad_ml_models'][model_name]['model'], dif=False, goal_prob=True)
+            outcome_preds.append(out)
+            goals_home_preds.append(gh)
+            goals_away_preds.append(ga)
+            
             ### display prediction results ###
             with tabs[i]:
                 with st.container():
-                    subtab1 = st.tabs(["Match Outcome"])
+                    subtab1, subtab2 = st.tabs(["Match Outcome", "Number of Goals"])
                     with subtab1:
                         # home win / draw / away win probabilities plot
-                        st.plotly_chart(appf.get_outcome_prob_plot(outcome_pred, label_type=bar_label_type, height=350), use_container_width=True, config={'displayModeBar': False})
-"""
+                        st.plotly_chart(appf.get_outcome_prob_plot(outcome_preds[i], label_type=bar_label_type, height=350), use_container_width=True, config={'displayModeBar': False})
+                    with subtab2:
+                        # n_goal distribution plot
+                        st.plotly_chart(appf.get_goals_prob_plot(goals_home_preds[i], 
+                                                                 goals_away_preds[i], 
+                                                                 home_name=st.session_state['teams_id2name'][home_team_id], 
+                                                                 away_name=st.session_state['teams_id2name'][away_team_id],
+                                                                 height=350), 
+                                        use_container_width=True, config={'displayModeBar': False})
+            """
 
-### end of loading cycle - sidebar stuff ###
+### text below selection ###
+st.markdown("""**\*\***: Indicates models which were trained on all available data (including the most recent season). These are expected to produce more accurate predictions for upcoming matches.
+               Non-star model variants were trained (& optimized) with the most recent season's data omitted, which enables us to evaluate their performance.""")
+st.divider()
+
+### end of loading cycle - sidebar & other stuff ###
 appf.keep_sidebar_extended()
-appf.show_app_logo_sidebar(vertical_pos='top')
+appf.hide_image_fullscreen_option()
+

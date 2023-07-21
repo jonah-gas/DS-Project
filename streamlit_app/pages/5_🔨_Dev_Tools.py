@@ -23,7 +23,8 @@ st.set_page_config(
 
 appf.show_app_logo_sidebar(vertical_pos='top')
 
-st.write("# Header - Dev Tools")
+appf.header_txt("Developer Tools", lvl=1, align="center", color=None)
+st.write('') # spacing
 
 st.markdown(
     """

@@ -11,17 +11,13 @@ import streamlit_app.app_functions as appf # <- contains functions used in our a
 import models.trad_ml.training_prediction_evaluation as tpe
 
 
-# set page config
+### page setup (visual) ###
 st.set_page_config(initial_sidebar_state='expanded')
-
-# hide 'view fullscreen' option for images
 appf.hide_image_fullscreen_option()
-
-# draw app logo(s)
-appf.show_app_logo_sidebar(vertical_pos='top') # sidebar logo
+appf.show_app_logo_sidebar(vertical_pos='top')
 
 ### session state updates ###
-appf.init_session_state()
+appf.init_session_state(reset_trad_ml_skip_pred_button=False)
 
 # load models in session state (if not already loaded)
 if 'trad_ml_models' not in st.session_state:
@@ -51,21 +47,24 @@ fg = appf.get_feature_gen_instance()
 
 ### sidebar ###
 with st.sidebar.form(key="sidebar_form", clear_on_submit=False):
-    bar_label_type = st.radio(key=f"radio_bar_label_type", 
-                              label="W/L/D prediction format:", 
-                              horizontal=False, 
-                              options=["percentage", 
-                                       "decimal odds", 
-                                       #"fractional odds", # todo: implement in app_functions.py
-                                       "moneyline odds"], 
-                              index=0)
+    st.session_state['bar_label_type'] = st.radio(key=f"radio_bar_label_type", 
+                                                  label="W/D/L prediction format:", 
+                                                  horizontal=False, 
+                                                  options=["percentage", 
+                                                           "decimal odds", 
+                                                           #"fractional odds", # todo: implement in app_functions.py
+                                                           "moneyline odds"], 
+                                                  index=0)
     submitted = st.form_submit_button("Change", use_container_width=True)
     if submitted:
-        st.session_state['trad_ml_skip_pred_button'] = True # immediately update predictions
+        st.session_state['trad_ml_skip_pred_button'] = True # immediately update predictions (without requiring button click)
+        
     
 
 ### header & text above selection ###
-st.write("# Predictions")
+appf.header_txt("Predictions", lvl=1, align="center", color=None)
+st.write('') # spacing
+
 ### team selection 
 with st.form(key="team_selection", clear_on_submit=False):
 
@@ -139,7 +138,7 @@ with st.form(key="team_selection", clear_on_submit=False):
                     subtab1, subtab2 = st.tabs(["Match Outcome", "Number of Goals"])
                     with subtab1:
                         # home win / draw / away win probabilities plot
-                        st.plotly_chart(appf.get_outcome_prob_plot(outcome_preds[i], label_type=bar_label_type, height=350), use_container_width=True, config={'displayModeBar': False})
+                        st.plotly_chart(appf.get_outcome_prob_plot(outcome_preds[i], label_type=st.session_state['bar_label_type'], height=350), use_container_width=True, config={'displayModeBar': False})
                     with subtab2:
                         # n_goal distribution plot
                         st.plotly_chart(appf.get_goals_prob_plot(goals_home_preds[i], 
@@ -151,53 +150,13 @@ with st.form(key="team_selection", clear_on_submit=False):
 
 
 ### text below selection ###
-st.markdown("""**\*\***: Indicates models which were trained on all available data (including the most recent season). These are expected to produce more accurate predictions for upcoming matches.
-               Non-star model variants were trained (& optimized) with the most recent season's data omitted, which enables us to evaluate their performance.""")
+appf.aligned_text(text="**:", align="left", color="#FFD700")
+st.markdown("""Indicates models which were re-fitted on all available data after hyperparameter tuning. We expect these variants to perform better than their unmarked counterparts, 
+               but this claim is not verifiable! The unmarked model variants were trained with the most recent season's data omitted, which enabled us to evaluate their performance.""")
 st.divider()
 
-st.write("# Model Information & Metrics")
 
-# model (type) 1
-name_1 = 'XGBoost'
-st.write(f"## XGBoost")
-with st.expander("View parameters", expanded=False):
-    st.write("### Feature generation parameters:")
-    st.write(st.session_state['trad_ml_models'][name_1]['info']['fg_config'])
-    st.write("### Model parameters:")
-    st.write(st.session_state['trad_ml_models'][name_1]['info']['model_config'])
-with st.expander("View performance metrics", expanded=False):
-    st.write(f"{name_1} performance metrics:")
-    st.write(st.session_state['trad_ml_models'][name_1]['info']['metrics'])
-
-
-# model (type) 2
-name_2 = 'RF'
-st.write(f"## Random Forest (RF)")
-with st.expander("View parameters", expanded=False):    
-    st.write("### Feature generation parameters:")
-    st.write(st.session_state['trad_ml_models'][name_2]['info']['fg_config'])
-    st.write("### Model parameters:")
-    st.write(st.session_state['trad_ml_models'][name_2]['info']['model_config'])
-with st.expander("View performance metrics", expanded=False):
-    st.write(f"{name_1} performance metrics:")
-    st.write(st.session_state['trad_ml_models'][name_2]['info']['metrics'])
-
-# model (type) 3
-name_3 = 'LogReg'
-st.write("## Logistic Regression (LogReg)")
-with st.expander("View parameters", expanded=False):    
-    st.write("### Feature generation parameters:")
-    st.write(st.session_state['trad_ml_models'][name_3]['info']['fg_config'])
-    st.write("### Model parameters:")
-    st.write(st.session_state['trad_ml_models'][name_3]['info']['model_config'])
-with st.expander("View performance metrics", expanded=False):
-    st.write(f"{name_1} performance metrics:")
-    st.write(st.session_state['trad_ml_models'][name_3]['info']['metrics'])
-
-
-
-
-
-### end of loading cycle - sidebar stuff ###
+### end of loading cycle - sidebar & other stuff ###
 appf.show_app_logo_sidebar(vertical_pos='top') # sidebar logo
 appf.keep_sidebar_extended()
+appf.hide_image_fullscreen_option()

@@ -12,14 +12,12 @@ import pandas as pd
 
 import streamlit_app.app_functions as appf # <- contains functions used in our app
 
-### reset certain session state variables for other pages ###
-st.session_state['trad_ml_skip_pred_button'] = True
-
-st.set_page_config(
-    page_title="About",
-    initial_sidebar_state='expanded'
-)
-
+### page setup (visual) ###
+st.set_page_config(initial_sidebar_state='expanded')
+appf.hide_image_fullscreen_option()
 appf.show_app_logo_sidebar(vertical_pos='top')
 
-st.write("# Project info...")
+
+appf.header_txt("Project Info, FAQ & Disclaimer", lvl=1, align="center", color=None)
+st.write('') # spacing
+

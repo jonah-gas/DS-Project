@@ -12,19 +12,16 @@ import pandas as pd
 
 import streamlit_app.app_functions as appf # <- contains functions used in our app
 
+### page setup (visual) ###
+st.set_page_config(initial_sidebar_state='expanded')
+appf.hide_image_fullscreen_option()
+appf.show_app_logo_sidebar(vertical_pos='top')
 
-### reset certain session state variables for other pages ###
-st.session_state['trad_ml_skip_pred_button'] = True
+### session state updates ###
+appf.init_session_state()
 
-
-### Entry page ###
-st.set_page_config(
-    page_title="Statistics TEST",
-    page_icon="📊",
-    initial_sidebar_state='expanded'
-)
-
-st.write("# Header - Statistics")
+appf.header_txt("Statistics", lvl=1, align="center", color=None)
+st.write('') # spacing
 
 st.markdown(
     """
@@ -34,4 +31,3 @@ st.markdown(
 
 ### end of loading cycle - sidebar stuff ###
 #appf.keep_sidebar_extended() # only use if necessary (causes slight jitter in sidebar menu)
-appf.show_app_logo_sidebar(vertical_pos='top')

@@ -13,6 +13,8 @@ import plotly.express as px
 import pandas as pd
 import pickle as pkl
 
+
+
 ####################
 # cached functions #
 ####################
@@ -47,6 +49,9 @@ def get_feature_gen_instance():
     fg.load_data()
     return fg
 
+
+
+
 #####################
 # non-cached utils  #
 #####################
@@ -68,17 +73,33 @@ def load_info_dict(model_dict_name):
 
     return d
 
-
 def load_model(model_name):
-    models_path = os.path.join(root_path, "models", "trad_ml", "saved_models")
-    return pkl.load(open(os.path.join(models_path, f"{model_name}.pkl"), "rb"))
+    model_path = os.path.join(root_path, "models", "trad_ml", "saved_models", f"{model_name}.pkl")
+    return pkl.load(open(model_path, "rb"))
 
+def load_lstm_model(state_dict_name):
+    state_dict_path = os.path.join(root_path, "models", "neural_net", "models", f"{state_dict_name}.pt")
+    #model = TheModelClass(*args, **kwargs)
+    #model.load_state_dict(torch.load(models_path))
+    #model.eval()
+    #return model
+    pass
 
 def update_session_state_tradml_selections(home_id, away_id):
     st.session_state['trad_ml_home_team_select_id'] = home_id
     st.session_state['trad_ml_away_team_select_id'] = away_id
 
-def init_session_state():
+# reset flag to skip submit button when (re-)loading for the specified prediction page
+def reset_skip_pred_button(for_page='trad_ml'):
+    if for_page == 'trad_ml':
+        st.session_state['trad_ml_skip_pred_button'] = True
+    elif for_page == 'lstm':
+        st.session_state['lstm_skip_pred_button'] = True
+    else:
+        raise ValueError(f"Unknown page '{for_page}'")
+
+# initialize / update session state variables if required -> to be called at beginning of each page
+def init_session_state(reset_trad_ml_skip_pred_button=True, reset_lstm_skip_pred_button=True):
     # db connection object
     if 'conn' not in st.session_state:
         st.session_state['conn'] = get_db_conn()
@@ -88,6 +109,13 @@ def init_session_state():
     # tradml preds: selected team ids
     if 'trad_ml_home_team_select_id' not in st.session_state:
         update_session_state_tradml_selections(home_id=135, away_id=122) # default: Dortmund vs. Bayern
+    if reset_trad_ml_skip_pred_button:
+        
+        reset_skip_pred_button(for_page='trad_ml')
+    if reset_lstm_skip_pred_button:
+        # reset flag to skip submit button when (re-)loading the (LSTM) prediction page
+        reset_skip_pred_button(for_page='lstm')
+
 
 #####################
 # plots and tables  #
@@ -203,6 +231,7 @@ def get_goals_prob_plot(goals_home_pred, goals_away_pred, home_name, away_name, 
     return plot
 
 
+
 #####################
 # styling utilities #
 #####################
@@ -237,15 +266,32 @@ def show_team_logo(team_id, width=None):
     else:
         st.image(f"{logos_path}placeholder_transparent.png", width=width)#, width=150)   
 
-# aligned text
-def aligned_text(text, align='center', bold=False, color=None, font_size=None):
+# styling options for normal text (incl. font size)
+def aligned_text(text, header_lvl=None, align='center', bold=False, color=None, font_size=None):
+
     if bold:
         text = f"<b>{text}</b>"
     if color:
         text = f"<span style='color:{color};'>{text}</span>"
-    if font_size:
-        text = f"<span style='font-size:{font_size};'>{text}</span>"
-    return st.markdown(f'<div style="text-align: {align};">{text}</div>', unsafe_allow_html=True)
+    size = f"font-size:{font_size}px;" if font_size is not None else ""
+
+    div = f'<div style="text-align: {align}; {size}">{text}</div>'
+    return st.write(div, unsafe_allow_html=True)
+
+# styling options for headers
+def header_txt(text, lvl=1, align='left', color=None):
+    # add span for color
+    html = text
+    if color:
+        html = f'<span style="color:{color};">{html}</span>'
+    # header tag
+    html = f'<h{lvl}>{html}</h{lvl}>'
+    # div for alignment
+    if align:
+        html = f'<div style="text-align: {align};">{html}</div>'
+    return st.markdown(html, unsafe_allow_html=True)
+
+
 
 # hide fullscreen option for images (-> should be called before plots are rendered)
 def hide_image_fullscreen_option():
@@ -256,7 +302,6 @@ def hide_image_fullscreen_option():
         </style>
         '''
     st.markdown(css, unsafe_allow_html=True)
-
 
 # keep sidebar extended
 def keep_sidebar_extended():
