@@ -82,7 +82,8 @@ def get_league_options():
 
 @st.cache_data(ttl=60*60*24*90, max_entries=1, show_spinner="Retrieving LSTM data...")
 def call_lstm_setup():
-    return lstm_setup(conn=st.session_state['conn'])
+    clubs, rearrange_list, scale_df, result_dict = lstm_setup(conn=st.session_state['conn'])
+    return clubs, rearrange_list, scale_df, result_dict
 
 
 @st.cache_data(ttl=60*60*24*7, max_entries=10, show_spinner="Retrieving aggregated data...")
