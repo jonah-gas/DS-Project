@@ -24,7 +24,7 @@ appf.load_lstm_models()
 st.write(st.session_state['lstm_models'])
 
 ### get required objects for LSTM ###
-clubs, rearrange_list, scale_df, result_dict = appf.call_lstm_setup()
+clubs, rearrange_list, scale_df, result_dict = appf.call_lstm_setup(conn=st.session_state['conn'])
 """st.write(clubs)
 st.write(rearrange_list)
 st.write(scale_df)
