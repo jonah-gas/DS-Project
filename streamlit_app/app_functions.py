@@ -49,8 +49,61 @@ def get_feature_gen_instance():
     fg.load_data()
     return fg
 
+# get available season strings for selection boxes
+@st.cache_data(ttl=60*60*24*7, max_entries=1, show_spinner="Retrieving season data...")
+def get_season_str_options():
+    query_str = """
+        SELECT DISTINCT ms.season_str 
+        FROM matchstats as ms
+        ORDER BY season_str DESC;
+        """
+    seasons_list = dbu.select_query(query_str, conn=st.session_state['conn']).iloc[:,0].tolist()
+    return seasons_list
 
+# get available league ids (and names) for selection boxes
+@st.cache_data(ttl=60*60*24*7, max_entries=1, show_spinner="Retrieving season data...")
+def get_league_options():
+    query_str = """
+        SELECT id, name 
+        FROM leagues
+        ORDER BY id ASC;
+        """
+    df = dbu.select_query(query_str, conn=st.session_state['conn'])
+    league_ids = df['id'].to_list()
+    league_names = df['name'].to_list()
+    return league_ids, league_names
 
+@st.cache_resource(ttl=60*60*24*7, max_entries=10, show_spinner="Retrieving aggregated data...")
+def get_aggregated_stats(agg_type, season_str_selection, league_id_selection):
+    # columns to include in aggregation (db colname, app display name, table alias)
+    to_include = [  ('gf', 'Goals scored', 'ms'), 
+                    ('xg', 'XG scored', 'ms'),                  
+                    ('ga', 'Goals conceded', 'ms'),
+                    ('xga', 'XG conceded', 'ms'),
+                    ('possession_general_poss', 'Possession %', 'ms'),
+                    ('keeper_performance_save_perc', 'Keeper save %', 'ms'),
+                    ('passing_total_cmp', 'Passes completed', 'ms'),
+                    ('misc_performance_crdy', 'Yellow cards', 'ms'),
+                    ('misc_performance_crdr', 'Red cards', 'ms'),
+                    ('misc_performance_fls', 'Fouls committed', 'ms')
+                    ]
+    # build aggregation string part of selection
+    select_str = ', '.join([f'to_char({agg_type}({table_alias}.{var}), \'9999999.00\') AS "{alias}"' for var, alias, table_alias in to_include])
+    # assemble full query string
+    query_str = f"""
+            SELECT t.name, {select_str} 
+            FROM matchstats ms
+            LEFT JOIN matches m ON ms.match_id = m.id
+            LEFT JOIN teams t ON ms.team_id = t.id
+            LEFT JOIN teamwages w ON ms.team_id = w.team_id
+                                    AND ms.season_str = w.season_str
+            WHERE ms.season_str = '{season_str_selection}'
+            AND ms.league_id = {league_id_selection}
+            GROUP BY t.name, ms.season_str, ms.league_id;
+                    """
+    # execute query
+    df = dbu.select_query(query_str, conn=st.session_state['conn'])
+    return df
 
 #####################
 # non-cached utils  #
@@ -83,6 +136,41 @@ def load_lstm_model(state_dict_name):
     #model.load_state_dict(torch.load(models_path))
     #model.eval()
     #return model
+    pass
+
+# load trad ml models in session state
+def load_trad_ml_models():
+    if 'trad_ml_models' not in st.session_state:
+        # define model dict (contains loaded models as well as model-specific params / info)
+        st.session_state['trad_ml_models'] = {
+            'XGBoost**':    {'info': load_info_dict('xgb_all_train'),
+                                'model': load_model('MultiOutputClassifier_xgb_all_train')},
+
+            'RF**':         {'info': load_info_dict('rf_all_train'),
+                                'model': load_model('MultiOutputClassifier_rf_all_train')},
+
+            'LogReg**':     {'info': load_info_dict('logreg_all_train'),
+                                'model': load_model('MultiOutputClassifier_logreg_all_train')},
+
+            'XGBoost':      {'info': load_info_dict('xgb_one_season_test'), # <- info dict file name (without .pkl)
+                                'model': load_model('MultiOutputClassifier_xgb_one_season_test')}, # <- model file name (without .pkl)
+
+            'RF':           {'info': load_info_dict('rf_one_season_test'), # <- info dict file name (without .pkl)
+                                'model': load_model('MultiOutputClassifier_rf_one_season_test')}, # <- model file name (without .pkl)
+
+            'LogReg':       {'info': load_info_dict('logreg_one_season_test'),
+                                'model': load_model('MultiOutputClassifier_logreg_one_season_test')}
+        }
+
+# load lstm models in session state
+def load_lstm_models():
+    """
+    if 'lstm_models' not in st.session_state:
+        st.session_state['lstm_models'] = {
+            'LSTM**':   {'model': appf.load_lstm_model('asdf')},
+            'LSTM':     {'model': appf.load_lstm_model('jklö')}
+        }
+    """
     pass
 
 def update_session_state_tradml_selections(home_id, away_id):

@@ -18,13 +18,7 @@ appf.show_app_logo_sidebar(vertical_pos='top')
 appf.init_session_state(reset_lstm_skip_pred_button=False)
 
 ### load model(s) in session state (if not already loaded)
-"""
-if 'lstm_models' not in st.session_state:
-    st.session_state['lstm_models'] = {
-        'LSTM**':   {'model': appf.load_lstm_model('asdf')},
-        'LSTM':     {'model': appf.load_lstm_model('jklö')}
-    }
-"""
+appf.load_lstm_models()
 
 ### load lstm data ###
 
