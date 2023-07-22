@@ -181,16 +181,16 @@ def get_outcome_prob_plot(ypred, label_type='probability', height=None):
     plot.update_yaxes(title_text='')
 
     # bar / label styling
-    bar_alpha = 0.75
-    win_color = f"rgba(127,255,0, {bar_alpha})" # green?
-    draw_color = f"rgba(255,208,112, {0.1})" # gold w/ v. low alpha?
-    loss_color = f"rgba(220,20,60, {bar_alpha})" # red?
+    home_color = f"rgba(255,208,112, {0.55})" # green?
+    draw_color = f"rgba(0,0,0, {0})" # gold w/ v. low alpha?
+    away_color = f"rgba(139,0,139, {0.7})" # red?
     plot.update_traces(textposition='outside',#['outside' if v < 15 else 'inside' for v in ypred['probability']], # bar labels outside if bar is too small
                        textfont={'size': 12, 'color':'gold'},
                        cliponaxis=False, 
-                       marker={'color': [win_color if ypred['probability'].iloc[0] > ypred['probability'].iloc[2] else loss_color, # home win bar
-                                         draw_color, # draw bar
-                                         win_color if ypred['probability'].iloc[2] > ypred['probability'].iloc[0] else loss_color], # away win bar
+                       marker={#'color': [win_color if ypred['probability'].iloc[0] > ypred['probability'].iloc[2] else loss_color, # home win bar
+                               #          draw_color, # draw bar
+                               #          win_color if ypred['probability'].iloc[2] > ypred['probability'].iloc[0] else loss_color], # away win bar
+                                'color': [home_color, draw_color, away_color], 
                                 'line':{'color': 'gold', 'width': 1}},
                         width=0.75 # bar width
                         )
@@ -209,7 +209,11 @@ def get_goals_prob_plot(goals_home_pred, goals_away_pred, home_name, away_name, 
     
     # plot
     plot = px.bar(df, x='n_goals', y=[home_col_name, away_col_name], 
-                  barmode='group', color_discrete_sequence=['lightblue', 'purple'])
+                  barmode='group', 
+                  #color_discrete_sequence=['rgba(252, 181, 204, 0.5)', 'rgba(185, 219, 184, 0.5)']
+                  color_discrete_sequence=['rgba(255,208,112, 0.55)', 'rgba(139,0,139, 0.75)']
+
+                  )
 
     plot.update_layout( showlegend=True, 
                         plot_bgcolor='rgba(0, 0, 0, 0)',
