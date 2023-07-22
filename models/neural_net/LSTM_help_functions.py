@@ -3,6 +3,10 @@ import pandas as pd
 import numpy as np
 import pickle as pkl
 import os
+import sys
+root_path = os.path.abspath(os.path.join('../..'))
+if root_path not in sys.path:
+    sys.path.append(root_path)
 import itertools
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 
@@ -153,10 +157,10 @@ class preprocess():
                                                                                                                    (self.data_frame.venue == self.venue_dict["Away"])].attendance.apply(lambda x: x/max_attend)
     
         # standard scaling of inputs
-        if not os.path.isfile(os.path.join("standard_scaler.pkl")):
+        if not os.path.isfile(os.path.join(root_path, "models", "neural_net", "standard_scaler.pkl")):
             object_ = StandardScaler()
         else:
-            with open(os.path.join("standard_scaler.pkl"), 'rb') as f:
+            with open(os.path.join(root_path, "models", "neural_net", "standard_scaler.pkl"), 'rb') as f:
                 object_ = pkl.load(f)
     
         liste = ['schedule_time', 'schedule_round', 'schedule_day', 'result', 'gf', 'ga', 'xg', 'xga', 'formation', 
@@ -166,13 +170,13 @@ class preprocess():
         cols_to_scale = list(set(list(self.data_frame.columns)).difference(liste))
         object_ = StandardScaler()
         self.data_frame.loc[:,cols_to_scale] = object_.fit_transform(self.data_frame.loc[:,cols_to_scale])
-        self.save_object(object_, "standard_scaler")
+        self.save_object(object_, root_path, "standard_scaler")
         
         # one hot encoding of teams
-        if not os.path.isfile(os.path.join("ohe_team.pkl")):
+        if not os.path.isfile(os.path.join(root_path, "models", "neural_net", "ohe_team.pkl")):
             ohe_team = OneHotEncoder()
         else:
-            with open(os.path.join("ohe_team.pkl"), 'rb') as f:
+            with open(os.path.join(root_path, "models", "neural_net", "ohe_team.pkl"), 'rb') as f:
                 ohe_team = pkl.load(f)
       
             
@@ -180,7 +184,7 @@ class preprocess():
         
         to_ohe_team = self.data_frame.loc[:, ["team_id", "opponent_id"]]
         ohe_team.fit(to_ohe_team)
-        self.save_object(ohe_team, "onehot_team")
+        self.save_object(ohe_team, root_path, "ohe_team")
                          
         codes = ohe_team.transform(to_ohe_team).toarray()
         feature_names = ohe_team.get_feature_names_out(['team_id', 'opponent_id'])
@@ -189,15 +193,15 @@ class preprocess():
         self.data_frame = pd.concat([self.data_frame, pd.DataFrame(codes, columns = feature_names).astype(int)], axis=1)
         
         # one hot encoding of leagues
-        if not os.path.isfile(os.path.join("onehot_ligue.pkl")):
+        if not os.path.isfile(os.path.join(root_path, "models", "neural_net", "onehot_ligue.pkl")):
             ohe_ligue = OneHotEncoder()
         else:
-            with open(os.path.join("onehot_ligue.pkl"), 'rb') as f:
+            with open(os.path.join(root_path, "models", "neural_net", "onehot_ligue.pkl"), 'rb') as f:
                 ohe_ligue = pkl.load(f)   
                 
         to_ohe_ligue = self.data_frame.loc[:,["league_id"]]
         ohe_ligue.fit(to_ohe_ligue)
-        self.save_object(ohe_ligue, "onehot_ligue")
+        self.save_object(ohe_ligue, root_path, "onehot_ligue")
         
         codes = ohe_ligue.transform(to_ohe_ligue).toarray()
         feature_names = ohe_ligue.get_feature_names_out(['league_id'])
@@ -232,11 +236,11 @@ class preprocess():
         return dicts[dict_name]
     
     
-    def save_object(self, obj, save_name):
+    def save_object(self, obj, root_path, save_name):
         """
         Saves obj to a pickle file in directory path.
         """ 
-        with open(os.path.join(f"{save_name}.pkl"), 'wb') as f:
+        with open(os.path.join(root_path, "models", "neural_net", f"{save_name}.pkl"), 'wb') as f:
             pkl.dump(obj, f)
 
     def load_data_prep_object(self, obj_name):
