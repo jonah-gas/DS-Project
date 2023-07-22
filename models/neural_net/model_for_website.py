@@ -93,7 +93,6 @@ def sequence_models(team1, team2, clubs, rearrange_list, scale_df, result_dict, 
     
     #expect_result = predict(prediction1, prediction2, result_dict)
     with torch.no_grad():
-        print((prediction1 + prediction2))
         prediction = torch.nn.functional.softmax((prediction1 + prediction2), dim = 0)
         
     pd_to_return = pd.DataFrame({"home_win_prob": float(prediction[0]),
