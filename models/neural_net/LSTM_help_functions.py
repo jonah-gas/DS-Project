@@ -183,7 +183,7 @@ class preprocess():
         self.save_object(ohe_team, "onehot_team")
                          
         codes = ohe_team.transform(to_ohe_team).toarray()
-        feature_names = ohe_team.get_feature_names(['team_id', 'opponent_id'])
+        feature_names = ohe_team.get_feature_names_out(['team_id', 'opponent_id'])
         
 
         self.data_frame = pd.concat([self.data_frame, pd.DataFrame(codes, columns = feature_names).astype(int)], axis=1)
@@ -200,7 +200,7 @@ class preprocess():
         self.save_object(ohe_ligue, "onehot_ligue")
         
         codes = ohe_ligue.transform(to_ohe_ligue).toarray()
-        feature_names = ohe_ligue.get_feature_names(['league_id'])
+        feature_names = ohe_ligue.get_feature_names_out(['league_id'])
 
         self.data_frame = pd.concat([self.data_frame, pd.DataFrame(codes, columns = feature_names).astype(int)], axis=1)
         
@@ -1122,35 +1122,7 @@ def points_and_co_oppon(clubs, result_dict):
 
 
 #################################################################################################################################
-# Combine predictions from two teams to one result
-def predict(tensor1, tensor2, result_dict):
-    # tensor with results
-    tens1 = tensor1 #[:,-1,:]
-    tens2 = tensor2 #[:,-1,:]
-    
-    sum1 = torch.sum(tens1, dim = 1)
-    sum2 = torch.sum(tens2, dim = 1)
-    sum1_reshaped = sum1.unsqueeze(1).expand_as(tens1)
-    sum2_reshaped = sum2.unsqueeze(1).expand_as(tens2)
-    output1 = tens1 / sum1_reshaped
-    output2 = tens2 / sum1_reshaped
-    
-    vals1, idx1 = torch.max(output1, dim = 1)
-    vals2, idx2 = torch.max(output2, dim = 1)
-    #high_val1 = torch.max(output1, dim = 1)
-    #high_val2 = torch.argmax(output2, dim = 1)
-    #print(high_val1.shape)
-    small_val1,_ = torch.topk(output1, k = 2, dim = 1, largest = False)
-    small_val2,_ = torch.topk(output2, k = 2, dim = 1, largest = False)
-    
-    diff1 = torch.sum(torch.square(vals1.unsqueeze(1).expand_as(small_val1) - small_val1), dim = 1)
-    diff2 = torch.sum(torch.square(vals2.unsqueeze(1).expand_as(small_val2) - small_val2), dim = 1) 
-    
-    result = torch.where(diff1 > diff2, idx1, torch.where(abs(diff1 - diff2) < 0.02, result_dict["D"], result_dict["L"]))
-        
-    return result
-                                                                                                                                        
-  ####################################################################
+
     
                                                                                                                                         
                                                                                                                                         
