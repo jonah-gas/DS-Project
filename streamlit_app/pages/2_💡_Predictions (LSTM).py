@@ -8,6 +8,8 @@ if root_path not in sys.path:
 import streamlit as st
 import streamlit_app.app_functions as appf # <- contains functions used in our app
 
+# import lstm modules
+import models.neural_net.LSTM_prediction as lstm_pred
 
 ### page setup (visual) ###
 st.set_page_config(initial_sidebar_state='expanded')
@@ -19,15 +21,17 @@ appf.init_session_state(reset_lstm_skip_pred_button=False)
 
 ### load model(s) in session state (if not already loaded)
 appf.load_lstm_models()
+st.write(st.session_state['lstm_models'])
 
-### load lstm data ###
+### get required objects for LSTM ###
+clubs, rearrange_list, scale_df, result_dict = appf.call_lstm_setup()
+"""st.write(clubs)
+st.write(rearrange_list)
+st.write(scale_df)
+st.write(result_dict)"""
 
 ### sidebar ###
-bar_label_type_options = ["percentage", 
-                         "decimal odds", 
-                         #"fractional odds", # todo: implement in app_functions.py
-                         "moneyline odds"]
-
+bar_label_type_options = ["percentage", "decimal odds", "moneyline odds"]
 with st.sidebar.form(key="lstm_sidebar_form", clear_on_submit=False):
     st.session_state['bar_label_type'] = st.radio(key=f"lstm_radio_bar_label_type", 
                                                   label="W/D/L prediction format:", 
@@ -97,36 +101,26 @@ with st.form(key="lstm_team_selection", clear_on_submit=False):
         tabs = st.tabs(model_names)
 
         # define result lists
-        outcome_preds, goals_home_preds, goals_away_preds = [], [], []
+        outcome_preds = []
         for i, model_name in enumerate(model_names):
 
             ### prediction ### 
-            """
-            # set fg params and generate features for prediction
-            fg.set_params(st.session_state['trad_ml_models'][model_name]['info']['fg_config'])
-            X_pred = fg.generate_features(incl_non_feature_cols=False, home_team_id=home_team_id, away_team_id=away_team_id, print_logs=False)
-            predictor = tpe.ModelPrediction() # instantiate predictor object
-            out, gh, ga = predictor.predict_prob(X_pred, st.session_state['trad_ml_models'][model_name]['model'], dif=False, goal_prob=True)
-            outcome_preds.append(out)
-            goals_home_preds.append(gh)
-            goals_away_preds.append(ga)
-            
+
+            pred_df = lstm_pred.sequence_models(model=st.session_state['lstm_models'][model_name]['model'],
+                                                team1=home_team_id,
+                                                team2=away_team_id,
+                                                clubs=clubs,
+                                                rearrange_list=rearrange_list,
+                                                scale_df=scale_df,
+                                                result_dict=result_dict)
+            outcome_preds.append(pred_df)
             ### display prediction results ###
             with tabs[i]:
                 with st.container():
-                    subtab1, subtab2 = st.tabs(["Match Outcome", "Number of Goals"])
-                    with subtab1:
-                        # home win / draw / away win probabilities plot
-                        st.plotly_chart(appf.get_outcome_prob_plot(outcome_preds[i], label_type=bar_label_type, height=350), use_container_width=True, config={'displayModeBar': False})
-                    with subtab2:
-                        # n_goal distribution plot
-                        st.plotly_chart(appf.get_goals_prob_plot(goals_home_preds[i], 
-                                                                 goals_away_preds[i], 
-                                                                 home_name=st.session_state['teams_id2name'][home_team_id], 
-                                                                 away_name=st.session_state['teams_id2name'][away_team_id],
-                                                                 height=350), 
-                                        use_container_width=True, config={'displayModeBar': False})
-            """
+                    # home win / draw / away win probabilities plot
+                    st.plotly_chart(appf.get_outcome_prob_plot(outcome_preds[i], label_type=st.session_state['bar_label_type'], height=350), use_container_width=True, config={'displayModeBar': False})
+
+            
 
 ### text below selection ###
 st.markdown("""**\*\***: Indicates models which were trained on all available data (including the most recent season). These are expected to produce more accurate predictions for upcoming matches.

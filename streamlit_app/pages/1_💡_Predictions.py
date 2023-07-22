@@ -26,15 +26,13 @@ appf.load_trad_ml_models()
 fg = appf.get_feature_gen_instance()
 
 ### sidebar ###
+bar_label_type_options = ["percentage", "decimal odds", "moneyline odds"]
 with st.sidebar.form(key="sidebar_form", clear_on_submit=False):
     st.session_state['bar_label_type'] = st.radio(key=f"radio_bar_label_type", 
                                                   label="W/D/L prediction format:", 
                                                   horizontal=False, 
-                                                  options=["percentage", 
-                                                           "decimal odds", 
-                                                           #"fractional odds", # todo: implement in app_functions.py
-                                                           "moneyline odds"], 
-                                                  index=0)
+                                                  options=bar_label_type_options, 
+                                                  index=bar_label_type_options.index(st.session_state['bar_label_type']))
     submitted = st.form_submit_button("Change", use_container_width=True)
     if submitted:
         st.session_state['trad_ml_skip_pred_button'] = True # immediately update predictions (without requiring button click)

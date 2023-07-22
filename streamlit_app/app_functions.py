@@ -7,11 +7,18 @@ if root_path not in sys.path:
 
 import streamlit as st
 import database_server.db_utilities as dbu
+# trad ml imports
 from models.trad_ml.feature_generation import FeatureGen
+
+# lstm imports
+from models.neural_net.LSTM_help_functions import Sport_pred_2LSTM_1    
+from models.neural_net.LSTM_prediction import lstm_setup
 
 import plotly.express as px
 import pandas as pd
 import pickle as pkl
+
+import torch
 
 
 
@@ -73,7 +80,12 @@ def get_league_options():
     league_names = df['name'].to_list()
     return league_ids, league_names
 
-@st.cache_resource(ttl=60*60*24*7, max_entries=10, show_spinner="Retrieving aggregated data...")
+@st.cache_data(ttl=60*60*24*90, max_entries=1, show_spinner="Retrieving LSTM data...")
+def call_lstm_setup():
+    return lstm_setup()
+
+
+@st.cache_data(ttl=60*60*24*7, max_entries=10, show_spinner="Retrieving aggregated data...")
 def get_aggregated_stats(agg_type, season_str_selection, league_id_selection):
     # columns to include in aggregation (db colname, app display name, table alias)
     to_include = [  ('gf', 'Goals scored', 'ms'), 
@@ -105,6 +117,8 @@ def get_aggregated_stats(agg_type, season_str_selection, league_id_selection):
     df = dbu.select_query(query_str, conn=st.session_state['conn'])
     return df
 
+
+
 #####################
 # non-cached utils  #
 #####################
@@ -131,12 +145,13 @@ def load_model(model_name):
     return pkl.load(open(model_path, "rb"))
 
 def load_lstm_model(state_dict_name):
-    state_dict_path = os.path.join(root_path, "models", "neural_net", "models", f"{state_dict_name}.pt")
-    #model = TheModelClass(*args, **kwargs)
-    #model.load_state_dict(torch.load(models_path))
-    #model.eval()
-    #return model
-    pass
+    state_dict_path = os.path.join(root_path, "models", "neural_net")
+
+    width_input = 367
+    model = Sport_pred_2LSTM_1(width_input, width_input, 3, 2)
+    model.state_dict(torch.load(os.path.join(state_dict_path, f"{state_dict_name}")))
+    model.eval()
+    return model
 
 # load trad ml models in session state
 def load_trad_ml_models():
@@ -164,13 +179,13 @@ def load_trad_ml_models():
 
 # load lstm models in session state
 def load_lstm_models():
-    """
+    
     if 'lstm_models' not in st.session_state:
         st.session_state['lstm_models'] = {
-            'LSTM**':   {'model': appf.load_lstm_model('asdf')},
-            'LSTM':     {'model': appf.load_lstm_model('jklö')}
+            'LSTM':   {'model': load_lstm_model('accur_49.45')},
+            #'LSTM':     {'model': load_lstm_model('jklö')}
         }
-    """
+    
     pass
 
 def update_session_state_tradml_selections(home_id, away_id):
@@ -198,11 +213,13 @@ def init_session_state(reset_trad_ml_skip_pred_button=True, reset_lstm_skip_pred
     if 'trad_ml_home_team_select_id' not in st.session_state:
         update_session_state_tradml_selections(home_id=135, away_id=122) # default: Dortmund vs. Bayern
     if reset_trad_ml_skip_pred_button:
-        
         reset_skip_pred_button(for_page='trad_ml')
     if reset_lstm_skip_pred_button:
         # reset flag to skip submit button when (re-)loading the (LSTM) prediction page
         reset_skip_pred_button(for_page='lstm')
+    
+    if 'bar_label_type' not in st.session_state:
+        st.session_state['bar_label_type'] = 'percentage'
 
 
 #####################
