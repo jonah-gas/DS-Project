@@ -20,27 +20,7 @@ appf.show_app_logo_sidebar(vertical_pos='top')
 appf.init_session_state(reset_trad_ml_skip_pred_button=False)
 
 # load models in session state (if not already loaded)
-if 'trad_ml_models' not in st.session_state:
-    # define model dict (contains loaded models as well as model-specific params / info)
-    st.session_state['trad_ml_models'] = {
-        'XGBoost**':    {'info': appf.load_info_dict('xgb_all_train'),
-                         'model': appf.load_model('MultiOutputClassifier_xgb_all_train')},
-
-        'RF**':         {'info': appf.load_info_dict('rf_all_train'),
-                         'model': appf.load_model('MultiOutputClassifier_rf_all_train')},
-
-        'LogReg**':     {'info': appf.load_info_dict('logreg_all_train'),
-                         'model': appf.load_model('MultiOutputClassifier_logreg_all_train')},
-
-        'XGBoost':      {'info': appf.load_info_dict('xgb_one_season_test'), # <- info dict file name (without .pkl)
-                         'model': appf.load_model('MultiOutputClassifier_xgb_one_season_test')}, # <- model file name (without .pkl)
-
-        'RF':           {'info': appf.load_info_dict('rf_one_season_test'), # <- info dict file name (without .pkl)
-                         'model': appf.load_model('MultiOutputClassifier_rf_one_season_test')}, # <- model file name (without .pkl)
-
-        'LogReg':       {'info': appf.load_info_dict('logreg_one_season_test'),
-                         'model': appf.load_model('MultiOutputClassifier_logreg_one_season_test')}
-    }
+appf.load_trad_ml_models()
 
 ### instantiate fg object ###
 fg = appf.get_feature_gen_instance()
