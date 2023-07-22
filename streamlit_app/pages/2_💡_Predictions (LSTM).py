@@ -23,7 +23,8 @@ appf.init_session_state(reset_lstm_skip_pred_button=False)
 appf.load_lstm_models()
 
 ### get required objects for LSTM ###
-clubs, rearrange_list, scale_df, result_dict = appf.call_lstm_setup()
+#clubs, rearrange_list, scale_df, result_dict = appf.call_lstm_setup
+clubs, rearrange_list, scale_df, result_dict = appf.load_lstm_setup_files()
 
 ### sidebar ###
 bar_label_type_options = ["percentage", "decimal odds", "moneyline odds"]
