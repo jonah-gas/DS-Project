@@ -83,7 +83,7 @@ def sequence_models(team1, team2, clubs, rearrange_list, scale_df, result_dict, 
     
     width_input = input_to_lstm[0][0].shape[1]
     model = Sport_pred_2LSTM_1(width_input, width_input, 3, 2)
-    model.state_dict(torch.load("./models/sequence_model_2seas/LSTM/2e-05/accur_49.45"))
+    model.state_dict(torch.load("accur_49.45"))
     model.eval()
     
     prediction1 = model(input_to_lstm[0][0])[-1,:] 
