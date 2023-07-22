@@ -1,6 +1,5 @@
 import torch 
 import itertools
-import numpy as np
 import pandas as pd
 import itertools
 import os
@@ -10,10 +9,9 @@ if root_path not in sys.path:
     sys.path.append(root_path)
 import database_server.db_utilities as dbu 
 import database_server.db_utilities as dbu 
-import pickle as pkl
 from models.neural_net.LSTM_help_functions import preprocess, club_dict, points_and_co, points_and_co_oppon, two_team_inputs
 
-def lstm_setup():
+def lstm_setup(conn):
     query_str = """
         SELECT ms.*, 
             m.schedule_date, m.schedule_time, m.schedule_round, m.schedule_day,
@@ -26,7 +24,7 @@ def lstm_setup():
         AND ms.season_str = w.season_str
         ORDER BY m.schedule_date DESC, m.schedule_time DESC; 
         """
-    df_allinfo = dbu.select_query(query_str)
+    df_allinfo = dbu.select_query(query_str, conn=conn)
     new_data_test = preprocess(df_allinfo)
     scale_df = new_data_test.data_frame
     clubs = club_dict(scale_df)
