@@ -43,6 +43,9 @@ with st.sidebar.form(key="lstm_sidebar_form", clear_on_submit=False):
 appf.header_txt("Predictions (LSTM)", lvl=1, align="center", color=None)
 st.write('') # spacing
 
+st.warning("⚠️ Caution: LSTM models are still in development, the current version might yield questionable predictions. Please refer to the traditional ML models for now.")
+
+
 ### team selection 
 with st.form(key="lstm_team_selection", clear_on_submit=False):
 
@@ -119,11 +122,15 @@ with st.form(key="lstm_team_selection", clear_on_submit=False):
             
 
 ### text below selection ###
-st.markdown("""**\*\***: Indicates models which were trained on all available data (including the most recent season). These are expected to produce more accurate predictions for upcoming matches.
-               Non-star model variants were trained (& optimized) with the most recent season's data omitted, which enables us to evaluate their performance.""")
-st.divider()
+
+#appf.aligned_text(text="**:", align="left", color="#FFD700")
+#st.markdown("""Indicates models which were re-fitted on all available data after hyperparameter tuning. We expect these variants to perform better than their unmarked counterparts, 
+#               but this claim is not verifiable! The unmarked model variants were trained with the most recent season's data omitted, which enabled us to evaluate their performance.""")
+#st.divider()
+
 
 ### end of loading cycle - sidebar & other stuff ###
+
 appf.keep_sidebar_extended()
 appf.hide_image_fullscreen_option()
 

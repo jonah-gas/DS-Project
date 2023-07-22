@@ -135,6 +135,6 @@ st.divider()
 
 
 ### end of loading cycle - sidebar & other stuff ###
-appf.show_app_logo_sidebar(vertical_pos='top') # sidebar logo
+
 appf.keep_sidebar_extended()
 appf.hide_image_fullscreen_option()

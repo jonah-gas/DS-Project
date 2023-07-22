@@ -1,7 +1,7 @@
 import os
 import sys
 
-root_path = os.path.abspath(os.path.join('')) # <- adjust such that root_path always points at the root project dir
+root_path = os.path.abspath(os.path.join('')) 
 if root_path not in sys.path:
     sys.path.append(root_path)
 
@@ -20,6 +20,15 @@ import pickle as pkl
 
 import torch
 
+"""
+This file collects various functions used in our streamlit app, i.e. to be called in the individual page files.
+They are grouped into the following categories:
+
+    - cached functions: functions employing streamlit's caching decorators
+    - non-cached utils: mostly functions to load data or manipulate the session state, without caching decorators
+    - plots and tables: functions related to plotly plots and tables
+    - styling utilities: functions related to app design / styling (e.g. text alignment, headers, logos, etc.)
+"""
 
 
 ####################
@@ -373,16 +382,20 @@ def show_app_logo_sidebar(vertical_pos='bottom'):
 
 def show_app_logo(width=150, use_column_width=False):
     app_logo_path = 'streamlit_app/app_logo.png'
-    st.image(app_logo_path, width=width, use_column_width=True) # use_column_width takes precedence over width
+    st.image(app_logo_path, width=width, use_column_width=use_column_width) # use_column_width takes precedence over width
 
 
 # show team logo
 def show_team_logo(team_id, width=None):
-    logos_path = 'streamlit_app/team_logos/' # hardcoding necessary, st.image() doesn't seem to work with os.path.join() outputs...
-    if os.path.isfile(os.path.join(root_path, "streamlit_app", "team_logos", f"{team_id}.png")):
+    logos_path = 'streamlit_app/team_logos/' # relative path necessary, st.image() doesn't seem to work with os.path.join() outputs...
+
+    allow_logos = True ### If we have to disable logos, set this flag to False
+
+    if allow_logos and os.path.isfile(os.path.join(root_path, "streamlit_app", "team_logos", f"{team_id}.png")):
         st.image(f"{logos_path}{team_id}.png", width=width)#), width=150)
     else:
         st.image(f"{logos_path}placeholder_transparent.png", width=width)#, width=150)   
+        # st.write("(no logo available)")
 
 # styling options for normal text (incl. font size)
 def aligned_text(text, header_lvl=None, align='center', bold=False, color=None, font_size=None):
