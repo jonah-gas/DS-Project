@@ -873,10 +873,9 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs):
 # Custom dataset
 
 class data_to_lstm():
-     """
-    Dataset class to feed data via dataloader to LSTM
     """
-        
+    Dataset class to feed data via dataloader to LSTM
+    """   
     def __init__(self, mylist):
         self.output = []
         self.team_home = mylist[0]
