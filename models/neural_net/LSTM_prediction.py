@@ -1,5 +1,6 @@
 import torch 
 import itertools
+import numpy as np
 import pandas as pd
 import itertools
 import os
@@ -9,9 +10,20 @@ if root_path not in sys.path:
     sys.path.append(root_path)
 import database_server.db_utilities as dbu 
 import database_server.db_utilities as dbu 
+import pickle as pkl
 from models.neural_net.LSTM_help_functions import preprocess, club_dict, points_and_co, points_and_co_oppon, two_team_inputs
 
-def lstm_setup(conn):
+def lstm_setup():
+    """
+    Function to prepare input to model.
+    Outputs:  clubs, ictionary that contains a dataframe with every games for every club
+              rearrange_list, column list that allows for more flexibility with input variables
+              scale_df, dataframe containing all data
+              result_dict, dictionary for nominal encoding of results
+              
+    """
+    
+    # query to get data from database
     query_str = """
         SELECT ms.*, 
             m.schedule_date, m.schedule_time, m.schedule_round, m.schedule_day,
@@ -24,7 +36,9 @@ def lstm_setup(conn):
         AND ms.season_str = w.season_str
         ORDER BY m.schedule_date DESC, m.schedule_time DESC; 
         """
-    df_allinfo = dbu.select_query(query_str, conn=conn)
+    df_allinfo = dbu.select_query(query_str)
+    
+    # preprocessing of data
     new_data_test = preprocess(df_allinfo)
     scale_df = new_data_test.data_frame
     clubs = club_dict(scale_df)
@@ -32,6 +46,7 @@ def lstm_setup(conn):
     clubs = points_and_co(clubs, result_dict)
     clubs = points_and_co_oppon(clubs, result_dict)
 
+    # list creation for flexibility which variables to add (soft coding)
     abcdefg = list(scale_df.columns)
     abc = abcdefg[:abcdefg.index("annual_wage_player_avg")+1]
     defg = abcdefg[abcdefg.index("annual_wage_player_avg")+1:]
@@ -77,6 +92,18 @@ def lstm_setup(conn):
     return clubs, rearrange_list, scale_df, result_dict
 
 def sequence_models(model, team1, team2, clubs, rearrange_list, scale_df, result_dict):
+    """
+    Prepares input for two arbitrary chosen teams and runs through LSTM
+    Input:  model, the LSTM
+            team1, team id of the home team
+            team2, team id of the opponents team
+            clubs, ictionary that contains a dataframe with every games for every club
+            rearrange_list, column list that allows for more flexibility with input variables
+            scale_df, dataframe containing all data
+            result_dict, dictionary for nominal encoding of results
+    Output: pd_to_return, dataframe with probs for home win, away win and draw
+    """
+            
         
     input_to_lstm = two_team_inputs(team1, team2, rearrange_list, scale_df, clubs)
     
