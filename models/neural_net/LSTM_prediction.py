@@ -37,12 +37,14 @@ def lstm_setup():
         ORDER BY m.schedule_date DESC, m.schedule_time DESC; 
         """
     df_allinfo = dbu.select_query(query_str)
-    
+        
     # preprocessing of data
     new_data_test = preprocess(df_allinfo)
     scale_df = new_data_test.data_frame
+        
     clubs = club_dict(scale_df)
     result_dict = new_data_test.return_dicts("result")
+    venue_dict = new_data_test.return_dicts("venue")
     clubs = points_and_co(clubs, result_dict)
     clubs = points_and_co_oppon(clubs, result_dict)
 
@@ -84,14 +86,14 @@ def lstm_setup():
         'weekly_wages_eur', 'season_str',  'league_id', 'venue', 'team_id',
         'opponent_id', 'last_results', 'oppon_points', 'oppon_mean_points', 'schedule_round',
             'captain', 'formation', 'referee',  'match_id', 'schedule_date', 'schedule_time',
-            'schedule_day', 'annual_wage_team', 'annual_wage_player_avg',]
+            'schedule_day', 'annual_wage_team', 'annual_wage_player_avg', "opponent_id"]
 
     rearrange_list = list(itertools.chain.from_iterable(defg if item == "team_id" else [item] for item in rearrange_list))
-    del rearrange_list[rearrange_list.index("opponent_id")]
+    #del rearrange_list[rearrange_list.index("opponent_id")]
 
-    return clubs, rearrange_list, scale_df, result_dict
+    return clubs, rearrange_list, scale_df, result_dict, venue_dict
 
-def sequence_models(model, team1, team2, clubs, rearrange_list, scale_df, result_dict):
+def sequence_models(model, team1, team2, clubs, rearrange_list, scale_df, result_dict, venue_dict):
     """
     Prepares input for two arbitrary chosen teams and runs through LSTM
     Input:  model, the LSTM
@@ -105,7 +107,7 @@ def sequence_models(model, team1, team2, clubs, rearrange_list, scale_df, result
     """
             
         
-    input_to_lstm = two_team_inputs(team1, team2, rearrange_list, scale_df, clubs)
+    input_to_lstm = two_team_inputs(team1, team2, rearrange_list, scale_df, clubs, venue_dict)
     
     prediction1 = model(input_to_lstm[0][0])[-1,:] 
     prediction2 = model(input_to_lstm[1][0])[-1,:]
@@ -113,8 +115,9 @@ def sequence_models(model, team1, team2, clubs, rearrange_list, scale_df, result
     prediction2 = torch.index_select(prediction2, 0, torch.LongTensor([result_dict["L"], result_dict["W"], result_dict["D"]]))
     
     #expect_result = predict(prediction1, prediction2, result_dict)
+    soft = torch.nn.Softmax(dim = 0)
     with torch.no_grad():
-        prediction = torch.nn.functional.softmax((prediction1 + prediction2), dim = 0)
+        prediction = soft(soft(prediction1) + soft(prediction2))
         
     pd_to_return = pd.DataFrame({"home_win_prob": float(prediction[0]),
                                 "draw_prob": float(prediction[2]),
