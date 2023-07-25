@@ -2,7 +2,7 @@
 /database_server/config/
 
 # streamlit secrets file
-/streamlit_app/.streamlit/secrets.toml
+/.streamlit/secrets.toml
 
 # compilation-related files (in any subfolders)
 __pycache__/
