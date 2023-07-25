@@ -101,7 +101,8 @@ def load_lstm_setup_files():
     result_dict = pkl.load(open(os.path.join(root_path, "models", "neural_net", "result_dict.pkl"), "rb"))
     scale_df = pkl.load(open(os.path.join(root_path, "models", "neural_net", "scale_df.pkl"), "rb"))
     rearrange_list = pkl.load(open(os.path.join(root_path, "models", "neural_net", "rearrange_list.pkl"), "rb"))
-    return clubs, rearrange_list, scale_df, result_dict
+    venue_dict = {'Away': 0, 'Home': 1}
+    return clubs, rearrange_list, scale_df, result_dict, venue_dict
 
 @st.cache_data(ttl=60*60*24*7, max_entries=10, show_spinner="Retrieving aggregated data...")
 def get_aggregated_stats(agg_type, season_str_selection, league_id_selection):

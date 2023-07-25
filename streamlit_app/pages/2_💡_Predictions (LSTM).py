@@ -24,7 +24,7 @@ appf.load_lstm_models()
 
 ### get required objects for LSTM ###
 #clubs, rearrange_list, scale_df, result_dict = appf.call_lstm_setup
-clubs, rearrange_list, scale_df, result_dict = appf.load_lstm_setup_files()
+clubs, rearrange_list, scale_df, result_dict, venue_dict = appf.load_lstm_setup_files()
 
 ### sidebar ###
 bar_label_type_options = ["percentage", "decimal odds", "moneyline odds"]
@@ -111,7 +111,8 @@ with st.form(key="lstm_team_selection", clear_on_submit=False):
                                                 clubs=clubs,
                                                 rearrange_list=rearrange_list,
                                                 scale_df=scale_df,
-                                                result_dict=result_dict)
+                                                result_dict=result_dict,
+                                                venue_dict=venue_dict)
             outcome_preds.append(pred_df)
             ### display prediction results ###
             with tabs[i]:
