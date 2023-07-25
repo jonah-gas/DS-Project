@@ -440,6 +440,7 @@ def inputs_2seas(games, clubs, rearrange_list, scale_df):
                     # get dataframe containing all games of club and reorder according to our need
                     df_team1 = clubs[team1]
                     df_team1 = df_team1[rearrange_list]
+                    df_team1.loc[df_team1[df_team1.match_id == game].index.values[0],'opponent_id_1':'opponent_id_143'] = df_team2.loc[df_team2[df_team2.match_id == game].index.values[0],'team_id_1':'team_id_143'].values
 
                     
                     # create dataframe containing all games of season prior to the game we want to predict
@@ -454,9 +455,10 @@ def inputs_2seas(games, clubs, rearrange_list, scale_df):
                     df_team2 = df_team2[rearrange_list]
                     df_team2_past = df_team2.loc[
                         df_team2[df_team2.season_str == season - 1].iloc[0].name:  # index of first game in seasons
-                        df_team2[df_team2.match_id == game].index.values[0] - 1,  # index of game priot to the one we want to predict
+                        df_team2[df_team2.match_id == game].index.values[0] - 1,  # index of game prior to the one we want to predict
                         :]  # all columns
-
+                    
+                    
                     # create np array with zero to store data
                     np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
                     np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
@@ -642,7 +644,7 @@ def inputs_2seas(games, clubs, rearrange_list, scale_df):
 
 
 
-def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs):
+def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs, venue_dict):
     """
     Creates evaluation input to LSTM for two arbitrary teams
     Inputs: team1, team id of home team as integer
@@ -659,24 +661,27 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs):
     lstm_inputs = [[], [], [], [], []] 
     season = int(max(scale_df.season_str))  # most recent season to base prediction on newest data
     
-    if team1 not in scale_df[scale_df.season_str == season].team_id.unique():
-        raise KeyError("Incorrect input: Team 1 did not play in the last season")
-    if team2 not in scale_df[scale_df.season_str == season].team_id.unique():
-        raise KeyError("Incorrect input: Team 2 did not play in the last season")
-                ## Team 1
-                # get ids of participating teams in game 
+    # some team_ids dont have data
+    if len(scale_df[scale_df.team_id == team1]) == 0:
+        raise ValueError(f"No data for team {str(team1)} (1) available. Please choose another team")
+    if len(scale_df[scale_df.team_id == team2]) == 0:
+        raise ValueError(f"No data for team {str(team2)} (2) available. Please choose another team")
+        
+    # get most recent season both clubs played in
+    season_t1 = scale_df[scale_df.team_id == team1].season_str.iloc[-1]
+    season_t2 = scale_df[scale_df.team_id == team2].season_str.iloc[-1]
    
     games = scale_df.schedule_round.unique()
-    if (team1 in scale_df[scale_df.season_str == season - 1].team_id.unique()) and (team2 in scale_df[scale_df.season_str == season - 1].team_id.unique()): # if both teams played in last season
+    
+    if (team1 in scale_df[scale_df.season_str == season_t1 - 1].team_id.unique()) and (team2 in scale_df[scale_df.season_str == season_t2 - 1].team_id.unique()): # if both teams played two season in a row
+        ## Team 1
         # get dataframe containing all games of club and reorder according to our need
         df_team1 = clubs[team1]
         df_team1 = df_team1[rearrange_list]
-        # get season in which game took place
-
 
         # create dataframe containing all games of season prior to the game we want to predict
         df_team1_past = df_team1.loc[ \
-            df_team1[df_team1.season_str == season - 1].iloc[0].name: # index of first game in seasons
+            df_team1[df_team1.season_str == season_t1 - 1].iloc[0].name: # index of first game in season
             df_team1.iloc[-2].name,  # index of game prior to the one we want to predict
             :]  # all columns
         
@@ -684,66 +689,84 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs):
         # get dataframe containing all games of club and reorder according to our need
         df_team2 = clubs[team2]
         df_team2 = df_team2[rearrange_list]
-        #print("team2", df_team2.shape)
+
         df_team2_past = df_team2.loc[
-            df_team2[df_team2.season_str == season - 1].iloc[0].name:  # index of first game in seasons
+            df_team2[df_team2.season_str == season_t2 - 1].iloc[0].name:  # index of first game in seasons
             df_team2.iloc[-2].name,  # index of game prior to the one we want to predict
             :]  # all columns
         
-        # create np array with zero to store data
-        np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
-        np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
-        #print("np_team1",np_team1.shape)
-
-        # insert data into array (back to front) such that all input into the lstm has the same length (padding)
-        np_team1[- len(df_team1_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team1_past.loc[:,"xg": "mean_points"]
-        np_team2[- len(df_team2_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team2_past.loc[:,"xg": "mean_points"]
-
-
-        # if last game of the season, no do not add as no future results to predict
-        if (df_team1.iloc[-1].name == df_team1_past.iloc[-1].name) or (df_team2.iloc[-1].name == df_team2_past.iloc[-1].name):
-            print(df_team1.iloc[-1].name)
-            print(df_team1_past.iloc[-1].name)
-            print("hello")
-            pass
-
-        # if not last game, add data from last game to input array
-        else:
-            # 
-            np_team1[- len(df_team1_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
-            np_team2[- len(df_team2_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
-
-            results1 = np.zeros((len(games) * 2, 4))
-            results2 = np.zeros((len(games) * 2, 4))
-            
-            res1 = len(df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"result"])
-            res2 = len(df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"result"])
-            results1[-res1:, 0] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"result"]
-            results1[-res1:, 1] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"gf"]
-            results1[-res1:, 2] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"ga"]
-            results1[-res1:, 3] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"goal_diff"]
-            results2[-res2:, 0] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"result"]
-            results2[-res2:, 1] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"gf"]
-            results2[-res2:, 2] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"ga"]
-            results2[-res2:, 3] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"goal_diff"]
-            
-            # one hot encode results for prediction
-            result1 = torch.nn.functional.one_hot(torch.tensor(results1[:,0]).long(), num_classes = 3)
-            result2 = torch.nn.functional.one_hot(torch.tensor(results2[:,0]).long(), num_classes = 3)
-            lstm_inputs[0].append(torch.tensor(np_team1))
-            lstm_inputs[1].append(torch.tensor(np_team2))
-            lstm_inputs[2].append(result1)
-            lstm_inputs[3].append(result2)
-
-    elif (team1 in scale_df[scale_df.season_str == season - 1].team_id.unique()) and (team2 not in scale_df[scale_df.season_str == season - 1].team_id.unique()): # if team 2 did not play in last season
+        # get pre known opponent values as new opponent is arbitrary chosen
+        df_team1.loc[df_team1.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team2.loc[df_team2.iloc[-1].name,'team_id_1':'team_id_143'].values
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_wages'] = df_team2.loc[df_team2.iloc[-1].name,'weekly_wages_eur']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_points'] = df_team2.loc[df_team2.iloc[-1].name,'points']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_mean_points'] = df_team2.loc[df_team2.iloc[-1].name,'mean_points']
+        df_team1.loc[df_team1.iloc[-1].name,'venue'] = venue_dict["Home"]
+  
+        df_team2.loc[df_team2.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team1.loc[df_team1.iloc[-1].name,'team_id_1':'team_id_143']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_wages'] = df_team1.loc[df_team1.iloc[-1].name,'weekly_wages_eur']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_points'] = df_team1.loc[df_team1.iloc[-1].name,'points']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_mean_points'] = df_team1.loc[df_team1.iloc[-1].name,'mean_points']
+        df_team2.loc[df_team2.iloc[-1].name,'venue'] = venue_dict["Away"]                        
         
+        # add last results if these values exist
+        if df_team1.league_id.unique() == df_team2.league_id.unique():
+            try:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = df_team1[df_team1.opponent_id == df_team2.team_id.unique()[0]].iloc[-1].last_results
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = df_team2[df_team2.opponent_id == df_team1.team_id.unique()[0]].iloc[-1].last_results
+            except:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+        else:
+            df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+            df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+        
+        # create np array with zero to store data
+        np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
+        np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
+
+        # insert data into array (back to front) such that all input into the lstm has the same length (padding)
+            # add information we know from previous games
+        np_team1[- len(df_team1_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team1_past.loc[:,"xg": "mean_points"]
+        np_team2[- len(df_team2_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team2_past.loc[:,"xg": "mean_points"]
+            # add informations we know upfront
+        np_team1[- len(df_team1_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+        np_team2[- len(df_team2_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+        
+        # np array to add targets
+        results1 = np.zeros((len(games) * 2, 4))
+        results2 = np.zeros((len(games) * 2, 4))
+        
+        # targets for training
+        res1 = len(df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"result"])
+        res2 = len(df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"result"])
+        results1[-res1:, 0] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"result"]
+        results1[-res1:, 1] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"gf"]
+        results1[-res1:, 2] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"ga"]
+        results1[-res1:, 3] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"goal_diff"]
+        results2[-res2:, 0] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"result"]
+        results2[-res2:, 1] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"gf"]
+        results2[-res2:, 2] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"ga"]
+        results2[-res2:, 3] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"goal_diff"]
+
+        # one hot encode results for prediction
+        result1 = torch.nn.functional.one_hot(torch.tensor(results1[:,0]).long(), num_classes = 3)
+        result2 = torch.nn.functional.one_hot(torch.tensor(results2[:,0]).long(), num_classes = 3)
+        
+        # add train data and targets to input list of lists
+        lstm_inputs[0].append(torch.tensor(np_team1))
+        lstm_inputs[1].append(torch.tensor(np_team2))
+        lstm_inputs[2].append(result1)
+        lstm_inputs[3].append(result2)
+
+    elif (team1 in scale_df[scale_df.season_str == season_t1 - 1].team_id.unique()) and (team2 not in scale_df[scale_df.season_str == season_t2 - 1].team_id.unique()): # if team 2 did not play in last season
+        ## Team 1
         # get dataframe containing all games of club and reorder according to our need
         df_team1 = clubs[team1]
         df_team1 = df_team1[rearrange_list]
 
         # create dataframe containing all games of season prior to the game we want to predict
         df_team1_past = df_team1.loc[ \
-            df_team1[df_team1.season_str == season - 1].iloc[0].name: # index of first game in seasons
+            df_team1[df_team1.season_str == season_t1 - 1].iloc[0].name: # index of first game in seasons
             df_team1.iloc[-2].name,  # index of game we want to predict
             :]  # all columns
 
@@ -753,63 +776,84 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs):
         df_team2 = df_team2[rearrange_list]
 
         df_team2_past = df_team2.loc[
-            df_team2[df_team2.season_str == season].iloc[0].name:  # index of first game in seasons
+            df_team2[df_team2.season_str == season_t2].iloc[0].name:  # index of first game in seasons
             df_team2.iloc[-2].name,  # index of game we want to predict
             :]  # all columns
 
+        # get opponent values as new opponent is arbitrary chosen
+        df_team1.loc[df_team1.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team2.loc[df_team2.iloc[-1].name,'team_id_1':'team_id_143']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_wages'] = df_team2.loc[df_team2.iloc[-1].name,'weekly_wages_eur']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_points'] = df_team2.loc[df_team2.iloc[-1].name,'points']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_mean_points'] = df_team2.loc[df_team2.iloc[-1].name,'mean_points']
+        df_team1.loc[df_team1.iloc[-1].name,'venue'] = venue_dict["Home"]            
+  
+        df_team2.loc[df_team2.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team1.loc[df_team1.iloc[-1].name,'team_id_1':'team_id_143']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_wages'] = df_team1.loc[df_team1.iloc[-1].name,'weekly_wages_eur']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_points'] = df_team1.loc[df_team1.iloc[-1].name,'points']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_mean_points'] = 0
+        df_team2.loc[df_team2.iloc[-1].name,'venue'] = venue_dict["Away"]   
+        
+        # add last results if these values exist
+        if df_team1.league_id.unique() == df_team2.league_id.unique():
+            try:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = df_team1[df_team1.opponent_id == df_team2.team_id.unique()[0]].iloc[-1].last_results
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = df_team2[df_team2.opponent_id == df_team1.team_id.unique()[0]].iloc[-1].last_results
+            except:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+        else:
+            df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+            df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+        
         # create np array with zero to store data
         np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
         np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
 
-
         # insert data into array (back to front) such that all input into the lstm has the same length (padding)
+            # add information we know from previous games
         np_team1[- len(df_team1_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team1_past.loc[:,"xg": "mean_points"]
         np_team2[- len(df_team2_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team2_past.loc[:,"xg": "mean_points"]
-
-
-        # if last game of the season, no do not add as no future results to predict
-        if (df_team1.iloc[-1].name == df_team1_past.iloc[-1].name) or (df_team2.iloc[-1].name == df_team2_past.iloc[-1].name):
-            pass
-
-
-        # if not last game, add data from last game to input array
-        else:
-            # 
-            np_team1[- len(df_team1_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
-            np_team2[- len(df_team2_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team2.loc[df_team2[df_team2.season_str == season].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
-
-            results1 = np.zeros((len(games) * 2, 4))
-            results2 = np.zeros((len(games) * 2, 4))
             
-            res1 = len(df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"result"])
-            res2 = len(df_team2.loc[df_team2[df_team2.season_str == season].iloc[1].name:,"result"])
-            results1[-res1:, 0] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"result"]
-            results1[-res1:, 1] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"gf"]
-            results1[-res1:, 2] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"ga"]
-            results1[-res1:, 3] = df_team1.loc[df_team1[df_team1.season_str == season - 1].iloc[1].name:,"goal_diff"]
-            results2[-res2:, 0] = df_team2.loc[df_team2[df_team2.season_str == season].iloc[1].name:,"result"]
-            results2[-res2:, 1] = df_team2.loc[df_team2[df_team2.season_str == season].iloc[1].name:,"gf"]
-            results2[-res2:, 2] = df_team2.loc[df_team2[df_team2.season_str == season].iloc[1].name:,"ga"]
-            results2[-res2:, 3] = df_team2.loc[df_team2[df_team2.season_str == season].iloc[1].name:,"goal_diff"]
-            
-            result1 = torch.nn.functional.one_hot(torch.tensor(results1[:,0]).long(), num_classes = 3)
-            result2 = torch.nn.functional.one_hot(torch.tensor(results2[:,0]).long(), num_classes = 3)
-            lstm_inputs[0].append(torch.tensor(np_team1))
-            lstm_inputs[1].append(torch.tensor(np_team2))
-            lstm_inputs[2].append(result1)
-            lstm_inputs[3].append(result2)
+            # add information we know upfront
+        np_team1[- len(df_team1_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+        np_team2[- len(df_team2_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+
+        # np arrays to add targets
+        results1 = np.zeros((len(games) * 2, 4))
+        results2 = np.zeros((len(games) * 2, 4))
+        
+        # targets for training
+        res1 = len(df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"result"])
+        res2 = len(df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"result"])
+        results1[-res1:, 0] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"result"]
+        results1[-res1:, 1] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"gf"]
+        results1[-res1:, 2] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"ga"]
+        results1[-res1:, 3] = df_team1.loc[df_team1[df_team1.season_str == season_t1 - 1].iloc[1].name:,"goal_diff"]
+        results2[-res2:, 0] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"result"]
+        results2[-res2:, 1] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"gf"]
+        results2[-res2:, 2] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"ga"]
+        results2[-res2:, 3] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"goal_diff"]
+        
+        # one hot encode results for prediction
+        result1 = torch.nn.functional.one_hot(torch.tensor(results1[:,0]).long(), num_classes = 3)
+        result2 = torch.nn.functional.one_hot(torch.tensor(results2[:,0]).long(), num_classes = 3)
+        
+        # add train data and targets to input list of lists
+        lstm_inputs[0].append(torch.tensor(np_team1))
+        lstm_inputs[1].append(torch.tensor(np_team2))
+        lstm_inputs[2].append(result1)
+        lstm_inputs[3].append(result2)
             
 
-    elif (team1 not in scale_df[scale_df.season_str == season - 1].team_id.unique()) and (team2 in scale_df[scale_df.season_str == season - 1].team_id.unique()): # if team 1 did not play in last season
-       
+    elif (team1 not in scale_df[scale_df.season_str == season_t1 - 1].team_id.unique()) and (team2 in scale_df[scale_df.season_str == season_t2 - 1].team_id.unique()): # if team 1 did not play in last season
+        ## Team 1
         # get dataframe containing all games of club and reorder according to our need
         df_team1 = clubs[team1]
         df_team1 = df_team1[rearrange_list]
 
-
-        # create dataframe containing all games of season prior to the game we want to predict
+        # create dataframe containing all games of season 
         df_team1_past = df_team1.loc[ \
-            df_team1[df_team1.season_str == season].iloc[0].name: # index of first game in seasons
+            df_team1[df_team1.season_str == season_t1].iloc[0].name: # index of first game in seasons
             df_team1.iloc[-2].name,  # index of game we want to predict
             :]  # all columns
 
@@ -818,56 +862,165 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs):
         df_team2 = clubs[team2]
         df_team2 = df_team2[rearrange_list]
 
+        # create dataframe containing all games of season prior to the game we want to predict
         df_team2_past = df_team2.loc[
-            df_team2[df_team2.season_str == season - 1].iloc[0].name:  # index of first game in seasons
+            df_team2[df_team2.season_str == season_t2 - 1].iloc[0].name:  # index of first game in seasons
             df_team2.iloc[-2].name,  # index of game we want to predict
             :]  # all columns
-
+        
+        # get opponent values as new opponent is arbitrary chosen
+        df_team1.loc[df_team1.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team2.loc[df_team2.iloc[-1].name,'team_id_1':'team_id_143']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_wages'] = df_team2.loc[df_team2.iloc[-1].name,'weekly_wages_eur']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_points'] = df_team2.loc[df_team2.iloc[-1].name,'points']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_mean_points'] = df_team2.loc[df_team2.iloc[-1].name,'mean_points']
+        df_team1.loc[df_team1.iloc[-1].name,'venue'] = venue_dict["Home"]            
+  
+        df_team2.loc[df_team2.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team1.loc[df_team1.iloc[-1].name,'team_id_1':'team_id_143']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_wages'] = df_team1.loc[df_team1.iloc[-1].name,'weekly_wages_eur']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_points'] = df_team1.loc[df_team1.iloc[-1].name,'points']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_mean_points'] = df_team1.loc[df_team1.iloc[-1].name,'mean_points']
+        df_team2.loc[df_team2.iloc[-1].name,'venue'] = venue_dict["Away"]   
+        
+        # add last results if these values exist
+        if df_team1.league_id.unique() == df_team2.league_id.unique():
+            try:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = df_team1[df_team1.opponent_id == df_team2.team_id.unique()[0]].iloc[-1].last_results
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = df_team2[df_team2.opponent_id == df_team1.team_id.unique()[0]].iloc[-1].last_results
+            except:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+        else:
+            df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+            df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+            
         # create np array with zero to store data
         np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
-        print(np_team1)
         np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
 
 
         # insert data into array (back to front) such that all input into the lstm has the same length (padding)
+            # add information we know from previous games
         np_team1[- len(df_team1_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team1_past.loc[:,"xg": "mean_points"]
         np_team2[- len(df_team2_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team2_past.loc[:,"xg": "mean_points"]
-
-
-        # if last game of the season, no do not add as no future results to predict
-        if (df_team1.iloc[-1].name == df_team1_past.iloc[-1].name) or (df_team2.iloc[-1].name == df_team2_past.iloc[-1].name):
-            pass
-
-        # if not last game, add data from last game to input array
-        else:
-            # 
-            np_team1[- len(df_team1_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team1.loc[df_team1[df_team1.season_str == season].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
-            np_team2[- len(df_team2_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
-
-            results1 = np.zeros((len(games) * 2, 4))
-            results2 = np.zeros((len(games) * 2, 4))
             
-            res1 = len(df_team1.loc[df_team1[df_team1.season_str == season].iloc[1].name:,"result"])
-            res2 = len(df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"result"])
-            results1[-res1:, 0] = df_team1.loc[df_team1[df_team1.season_str == season].iloc[1].name:,"result"]
-            results1[-res1:, 1] = df_team1.loc[df_team1[df_team1.season_str == season].iloc[1].name:,"gf"]
-            results1[-res1:, 2] = df_team1.loc[df_team1[df_team1.season_str == season].iloc[1].name:,"ga"]
-            results1[-res1:, 3] = df_team1.loc[df_team1[df_team1.season_str == season].iloc[1].name:,"goal_diff"]
-            results2[-res2:, 0] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"result"]
-            results2[-res2:, 1] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"gf"]
-            results2[-res2:, 2] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"ga"]
-            results2[-res2:, 3] = df_team2.loc[df_team2[df_team2.season_str == season - 1].iloc[1].name:,"goal_diff"]
-            
-            result1 = torch.nn.functional.one_hot(torch.tensor(results1[:,0]).long(), num_classes = 3)
-            result2 = torch.nn.functional.one_hot(torch.tensor(results2[:,0]).long(), num_classes = 3)
-            lstm_inputs[0].append(torch.tensor(np_team1))
-            lstm_inputs[1].append(torch.tensor(np_team2))
-            lstm_inputs[2].append(result1)
-            lstm_inputs[3].append(result2)
-            #lstm_inputs[4].append(fut_feature1)
-            #lstm_inputs[5].append(fut_feature2)
+            # add information we know upfront
+        np_team1[- len(df_team1_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+        np_team2[- len(df_team2_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+
+        # np arrays to add targets
+        results1 = np.zeros((len(games) * 2, 4))
+        results2 = np.zeros((len(games) * 2, 4))
+        
+        # targets for training
+        res1 = len(df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"result"])
+        res2 = len(df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"result"])
+        results1[-res1:, 0] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"result"]
+        results1[-res1:, 1] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"gf"]
+        results1[-res1:, 2] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"ga"]
+        results1[-res1:, 3] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"goal_diff"]
+        results2[-res2:, 0] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"result"]
+        results2[-res2:, 1] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"gf"]
+        results2[-res2:, 2] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"ga"]
+        results2[-res2:, 3] = df_team2.loc[df_team2[df_team2.season_str == season_t2 - 1].iloc[1].name:,"goal_diff"]
+        
+        # one hot encode results for prediction
+        result1 = torch.nn.functional.one_hot(torch.tensor(results1[:,0]).long(), num_classes = 3)
+        result2 = torch.nn.functional.one_hot(torch.tensor(results2[:,0]).long(), num_classes = 3)
+        
+        # add train data and targets to input list of lists
+        lstm_inputs[0].append(torch.tensor(np_team1))
+        lstm_inputs[1].append(torch.tensor(np_team2))
+        lstm_inputs[2].append(result1)
+        lstm_inputs[3].append(result2)
+        
     else:
-        raise KeyError("One or both team/s did not play in last season")
+        # Team 1
+        # get dataframe containing all games of club and reorder according to our need
+        df_team1 = clubs[team1]
+        df_team1 = df_team1[rearrange_list]
+
+        # create dataframe containing all games of season prior to the game we want to predict
+        df_team1_past = df_team1.loc[ \
+            df_team1[df_team1.season_str == season_t1].iloc[0].name: # index of first game in seasons
+            df_team1.iloc[-2].name,  # index of game we want to predict
+            :]  # all columns
+
+        ## Team 2
+        # get dataframe containing all games of club and reorder according to our need
+        df_team2 = clubs[team2]
+        df_team2 = df_team2[rearrange_list]
+
+        # create dataframe containing all games of season prior to the game we want to predict
+        df_team2_past = df_team2.loc[
+            df_team2[df_team2.season_str == season_t2].iloc[0].name:  # index of first game in seasons
+            df_team2.iloc[-2].name,  # index of game we want to predict
+            :]  # all columns
+        
+        # get opponent values as new opponent is arbitrary chosen
+        df_team1.loc[df_team1.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team2.loc[df_team2.iloc[-1].name,'team_id_1':'team_id_143']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_wages'] = df_team2.loc[df_team2.iloc[-1].name,'weekly_wages_eur']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_points'] = df_team2.loc[df_team2.iloc[-1].name,'points']
+        df_team1.loc[df_team1.iloc[-1].name,'oppon_mean_points'] = df_team2.loc[df_team2.iloc[-1].name,'mean_points']
+        df_team1.loc[df_team1.iloc[-1].name,'venue'] = venue_dict["Home"]            
+  
+        df_team2.loc[df_team2.iloc[-1].name,'opponent_id_1':'opponent_id_143'] = df_team1.loc[df_team1.iloc[-1].name,'team_id_1':'team_id_143']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_wages'] = df_team1.loc[df_team1.iloc[-1].name,'weekly_wages_eur']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_points'] = df_team1.loc[df_team1.iloc[-1].name,'points']
+        df_team2.loc[df_team2.iloc[-1].name,'oppon_mean_points'] = df_team1.loc[df_team1.iloc[-1].name,'mean_points']
+        df_team2.loc[df_team2.iloc[-1].name,'venue'] = venue_dict["Away"]   
+        
+        # add last results if these values exist
+        if df_team1.league_id.unique() == df_team2.league_id.unique():
+            try:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = df_team1[df_team1.opponent_id == df_team2.team_id.unique()[0]].iloc[-1].last_results
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = df_team2[df_team2.opponent_id == df_team1.team_id.unique()[0]].iloc[-1].last_results
+            except:
+                df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+                df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+        else:
+            df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
+            df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+            
+        # create np array with zero to store data
+        np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
+        np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
+
+
+        # insert data into array (back to front) such that all input into the lstm has the same length (padding)
+            # add information we know from previous games
+        np_team1[- len(df_team1_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team1_past.loc[:,"xg": "mean_points"]
+        np_team2[- len(df_team2_past):, :-df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]] = df_team2_past.loc[:,"xg": "mean_points"]
+
+            # add information we know upfront
+        np_team1[- len(df_team1_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+        np_team2[- len(df_team2_past):, -df_team1.loc[:, "weekly_wages_eur":"schedule_round"].shape[1]:] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"weekly_wages_eur":"schedule_round"]  
+
+        # np arrays to add targets
+        results1 = np.zeros((len(games) * 2, 4))
+        results2 = np.zeros((len(games) * 2, 4))
+
+        # targets for training
+        res1 = len(df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"result"])
+        res2 = len(df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"result"])
+        results1[-res1:, 0] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"result"]
+        results1[-res1:, 1] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"gf"]
+        results1[-res1:, 2] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"ga"]
+        results1[-res1:, 3] = df_team1.loc[df_team1[df_team1.season_str == season_t1].iloc[1].name:,"goal_diff"]
+        results2[-res2:, 0] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"result"]
+        results2[-res2:, 1] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"gf"]
+        results2[-res2:, 2] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"ga"]
+        results2[-res2:, 3] = df_team2.loc[df_team2[df_team2.season_str == season_t2].iloc[1].name:,"goal_diff"]
+
+        # one hot encode results for prediction
+        result1 = torch.nn.functional.one_hot(torch.tensor(results1[:,0]).long(), num_classes = 3)
+        result2 = torch.nn.functional.one_hot(torch.tensor(results2[:,0]).long(), num_classes = 3)
+        
+        # add train data and targets to input list of lists
+        lstm_inputs[0].append(torch.tensor(np_team1))
+        lstm_inputs[1].append(torch.tensor(np_team2))
+        lstm_inputs[2].append(result1)
+        lstm_inputs[3].append(result2)
+        
     return lstm_inputs
 #################################################################################################################################
 # Custom dataset
@@ -875,7 +1028,8 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs):
 class data_to_lstm():
     """
     Dataset class to feed data via dataloader to LSTM
-    """   
+    """
+        
     def __init__(self, mylist):
         self.output = []
         self.team_home = mylist[0]
