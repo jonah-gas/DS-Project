@@ -168,7 +168,7 @@ def load_lstm_model(state_dict_name):
 
     width_input = 367
     model = Sport_pred_2LSTM_1(width_input, width_input, 3, 2)
-    model.state_dict(torch.load(os.path.join(state_dict_path, f"{state_dict_name}")))
+    model.state_dict(torch.load(os.path.join(state_dict_path, f"{state_dict_name}"))) # depreciated but still works
     model.eval()
     return model
 
@@ -210,6 +210,7 @@ def load_lstm_models():
 def update_session_state_tradml_selections(home_id, away_id):
     st.session_state['trad_ml_home_team_select_id'] = home_id
     st.session_state['trad_ml_away_team_select_id'] = away_id
+    # note: the above session state variables are also used by the LSTM page (-> team selection is persistent between pages)
 
 # reset flag to skip submit button when (re-)loading for the specified prediction page
 def reset_skip_pred_button(for_page='trad_ml'):
@@ -240,16 +241,19 @@ def init_session_state(reset_trad_ml_skip_pred_button=True, reset_lstm_skip_pred
     if 'bar_label_type' not in st.session_state:
         st.session_state['bar_label_type'] = 'percentage'
 
+# database online test
+def check_db_connection():
+    try:
+        df = dbu.select_query("SELECT 1;", conn=st.session_state['conn'])
+        return True
+    except:
+        return False
+
 
 #####################
 # plots and tables  #
 #####################
 
-"""
-# get fractional odds from probability (e.g. probability of 0.5 -> "1/1")
-def get_fractional_odds(prob, rounding=1):
-    pass
-"""
 # get moneyline odds from probability (e.g. probability of 0.5 -> "+100")
 def get_moneyline_odds(prob, rounding=2):
     prob = round(prob, rounding)
@@ -359,7 +363,6 @@ def get_goals_prob_plot(goals_home_pred, goals_away_pred, home_name, away_name, 
     return plot
 
 
-
 #####################
 # styling utilities #
 #####################
@@ -422,7 +425,6 @@ def header_txt(text, lvl=1, align='left', color=None):
     if align:
         html = f'<div style="text-align: {align};">{html}</div>'
     return st.markdown(html, unsafe_allow_html=True)
-
 
 
 # hide fullscreen option for images (-> should be called before plots are rendered)

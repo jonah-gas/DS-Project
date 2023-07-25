@@ -36,8 +36,7 @@ with st.sidebar.form(key="sidebar_form", clear_on_submit=False):
     submitted = st.form_submit_button("Change", use_container_width=True)
     if submitted:
         st.session_state['trad_ml_skip_pred_button'] = True # immediately update predictions (without requiring button click)
-        
-    
+
 
 ### header & text above selection ###
 appf.header_txt("Predictions", lvl=1, align="center", color=None)
@@ -135,6 +134,5 @@ st.divider()
 
 
 ### end of loading cycle - sidebar & other stuff ###
-
 appf.keep_sidebar_extended()
 appf.hide_image_fullscreen_option()

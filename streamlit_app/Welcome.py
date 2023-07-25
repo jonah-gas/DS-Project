@@ -30,7 +30,9 @@ appf.init_session_state()
 
 ### content ###
 appf.header_txt("Top3Bets - THE place for soccer predictions!", lvl=1, align="center", color=None)
+st.divider()
 appf.header_txt('Welcome!', lvl=3, align="center", color=None)
+appf.aligned_text("Please use the sidebar to navigate between pages.", align="center")
 
 
 
