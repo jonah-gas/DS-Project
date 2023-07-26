@@ -104,11 +104,11 @@ def call_lstm_setup():
 # alternative if we don't get caching to work for call_lstm_setup()
 def load_lstm_setup_files():
     # load pickled files
-    clubs = pkl.load(open(os.path.join(root_path, "models", "neural_net", "clubs.pkl"), "rb"))
-    result_dict = pkl.load(open(os.path.join(root_path, "models", "neural_net", "result_dict.pkl"), "rb"))
-    scale_df = pkl.load(open(os.path.join(root_path, "models", "neural_net", "scale_df.pkl"), "rb"))
-    rearrange_list = pkl.load(open(os.path.join(root_path, "models", "neural_net", "rearrange_list.pkl"), "rb"))
-    venue_dict = {'Away': 0, 'Home': 1}
+    clubs = pkl.load(open(os.path.join(root_path, "models", "neural_net", "clubs_gru.pkl"), "rb"))
+    result_dict = pkl.load(open(os.path.join(root_path, "models", "neural_net", "result_dict_gru.pkl"), "rb"))
+    scale_df = pkl.load(open(os.path.join(root_path, "models", "neural_net", "scale_df_gru.pkl"), "rb"))
+    rearrange_list = pkl.load(open(os.path.join(root_path, "models", "neural_net", "rearrange_list_gru.pkl"), "rb"))
+    venue_dict = pkl.load(open(os.path.join(root_path, "models", "neural_net", "venue_dict_gru.pkl"), "rb"))
     return clubs, rearrange_list, scale_df, result_dict, venue_dict
 
 @st.cache_data(ttl=60*60*24*7, max_entries=10, show_spinner="Retrieving aggregated data...")
