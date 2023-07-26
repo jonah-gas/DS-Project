@@ -16,7 +16,7 @@ appf.show_app_logo_sidebar(vertical_pos='top')
 
 # make sure models are loaded
 appf.load_trad_ml_models()
-appf.load_lstm_models()
+#appf.load_lstm_models()
 
 appf.header_txt("Model Information & Metrics", lvl=1, align="center", color=None)
 st.write('') # spacing
