@@ -11,14 +11,21 @@ import database_server.db_utilities as dbu
 from models.trad_ml.feature_generation import FeatureGen
 
 # lstm imports
+import torch
 from models.neural_net.LSTM_help_functions import Sport_pred_2LSTM_1    
 from models.neural_net.LSTM_prediction import lstm_setup
+#import models.neural_net.gru_models
 
 import plotly.express as px
 import pandas as pd
 import pickle as pkl
 
-import torch
+
+
+
+
+
+
 
 """
 This file collects various functions used in our streamlit app, i.e. to be called in the individual page files.
@@ -163,12 +170,14 @@ def load_model(model_name):
     model_path = os.path.join(root_path, "models", "trad_ml", "saved_models", f"{model_name}.pkl")
     return pkl.load(open(model_path, "rb"))
 
-def load_lstm_model(state_dict_name):
-    state_dict_path = os.path.join(root_path, "models", "neural_net")
-
+def load_lstm_model(model_name):
+    model_path = os.path.join(root_path, "models", "neural_net", "saved_models", f"{model_name}.pth")
+    """
     width_input = 367
     model = Sport_pred_2LSTM_1(width_input, width_input, 3, 2)
     model.state_dict(torch.load(os.path.join(state_dict_path, f"{state_dict_name}"))) # depreciated but still works
+    """
+    model = torch.load(model_path)
     model.eval()
     return model
 
@@ -201,8 +210,7 @@ def load_lstm_models():
     
     if 'lstm_models' not in st.session_state:
         st.session_state['lstm_models'] = {
-            'LSTM':   {'model': load_lstm_model('accur_49.45')},
-            #'LSTM':     {'model': load_lstm_model('jklö')}
+            'GRU':   {'model': load_lstm_model('2_layer_GRU_outcome')}
         }
     
     pass
@@ -326,7 +334,7 @@ def get_outcome_prob_plot(ypred, label_type='probability', height=None):
 
 def get_goals_prob_plot(goals_home_pred, goals_away_pred, home_name, away_name, height=None):
     ### prepare dataframe
-
+    st.write(goals_home_pred, goals_away_pred)
     # join into one df
     df = pd.concat([goals_home_pred, goals_away_pred], axis=0, ignore_index=True)
     df = df.fillna(0) # replace NaNs with 0s (occurs only if preds have different column counts)

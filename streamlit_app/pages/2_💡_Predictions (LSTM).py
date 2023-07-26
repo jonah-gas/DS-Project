@@ -10,6 +10,7 @@ import streamlit_app.app_functions as appf # <- contains functions used in our a
 
 # import lstm modules
 import models.neural_net.LSTM_prediction as lstm_pred
+from models.neural_net.gru_models import Sport_pred_1GRU_3, Sport_pred_2GRU_1
 
 ### page setup (visual) ###
 st.set_page_config(initial_sidebar_state='expanded')
