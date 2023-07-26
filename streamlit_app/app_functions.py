@@ -336,7 +336,6 @@ def get_outcome_prob_plot(ypred, label_type='probability', height=None):
 
 def get_goals_prob_plot(goals_home_pred, goals_away_pred, home_name, away_name, height=None):
     ### prepare dataframe
-    st.write(goals_home_pred, goals_away_pred)
     # join into one df
     df = pd.concat([goals_home_pred, goals_away_pred], axis=0, ignore_index=True)
     df = df.fillna(0) # replace NaNs with 0s (occurs only if preds have different column counts)
