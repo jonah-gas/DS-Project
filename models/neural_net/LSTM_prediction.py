@@ -82,9 +82,9 @@ def lstm_setup():
         'passing_attacking_crspa', 'passing_attacking_prgp',
         'passing_types_passtypes_live', 'passing_types_passtypes_dead',
         'passing_types_passtypes_fk', 'passing_types_passtypes_tb',
-        'misc_aerialduels_won_perc','attendance', 'points', 'mean_points',
+        'misc_aerialduels_won_perc', 'stad_capac', 'attendance', 'points', 'mean_points',
         'weekly_wages_eur', 'season_str',  'league_id', 'venue', 'team_id',
-        'opponent_id', 'last_results', 'oppon_points', 'oppon_mean_points', 'schedule_round',
+        'opponent_id', 'last_results', 'oppon_points', 'oppon_mean_points', 'oppon_wages', 'schedule_round',
             'captain', 'formation', 'referee',  'match_id', 'schedule_date', 'schedule_time',
             'schedule_day', 'annual_wage_team', 'annual_wage_player_avg', "opponent_id"]
 
@@ -109,8 +109,9 @@ def sequence_models(model, team1, team2, clubs, rearrange_list, scale_df, result
         
     input_to_lstm = two_team_inputs(team1, team2, rearrange_list, scale_df, clubs, venue_dict)
     
-    prediction1 = model(input_to_lstm[0][0])[-1,:] 
-    prediction2 = model(input_to_lstm[1][0])[-1,:]
+    prediction1 = model(input_to_lstm[0][0].unsqueeze(dim = 0)).squeeze()
+    prediction2 = model(input_to_lstm[1][0].unsqueeze(dim = 0)).squeeze()
+   
     prediction1 = torch.index_select(prediction1, 0, torch.LongTensor([result_dict["W"], result_dict["L"], result_dict["D"]]))
     prediction2 = torch.index_select(prediction2, 0, torch.LongTensor([result_dict["L"], result_dict["W"], result_dict["D"]]))
     
