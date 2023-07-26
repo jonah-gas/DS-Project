@@ -122,7 +122,7 @@ def get_aggregated_stats(agg_type, season_str_selection, league_id_selection):
     select_str = ', '.join([f'to_char({agg_type}({table_alias}.{var}), \'9999999.00\') AS "{alias}"' for var, alias, table_alias in to_include])
     # assemble full query string
     query_str = f"""
-            SELECT t.name, {select_str} 
+            SELECT t.name AS Team, {select_str} 
             FROM matchstats ms
             LEFT JOIN matches m ON ms.match_id = m.id
             LEFT JOIN teams t ON ms.team_id = t.id
