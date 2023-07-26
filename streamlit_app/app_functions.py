@@ -11,9 +11,9 @@ import database_server.db_utilities as dbu
 from models.trad_ml.feature_generation import FeatureGen
 
 # lstm imports
-import torch
-from models.neural_net.LSTM_help_functions import Sport_pred_2LSTM_1    
-from models.neural_net.LSTM_prediction import lstm_setup
+#import torch
+#from models.neural_net.LSTM_help_functions import Sport_pred_2LSTM_1    
+#from models.neural_net.LSTM_prediction import lstm_setup
 #import models.neural_net.gru_models
 
 import plotly.express as px
@@ -96,10 +96,12 @@ def get_league_options():
     league_names = df['name'].to_list()
     return league_ids, league_names
 
+"""
 @st.cache_data(ttl=60*60*24*90, max_entries=1, show_spinner="Retrieving LSTM data...")
 def call_lstm_setup():
     clubs, rearrange_list, scale_df, result_dict = lstm_setup(conn=st.session_state['conn'])
     return clubs, rearrange_list, scale_df, result_dict
+"""
 
 # alternative if we don't get caching to work for call_lstm_setup()
 def load_lstm_setup_files():

@@ -9,8 +9,8 @@ import streamlit as st
 import streamlit_app.app_functions as appf # <- contains functions used in our app
 
 # import lstm modules
-import models.neural_net.LSTM_prediction as lstm_pred
-from models.neural_net.gru_models import Sport_pred_1GRU_3, Sport_pred_2GRU_1
+#import models.neural_net.LSTM_prediction as lstm_pred
+#from models.neural_net.gru_models import Sport_pred_1GRU_3, Sport_pred_2GRU_1
 
 ### page setup (visual) ###
 st.set_page_config(initial_sidebar_state='expanded')
@@ -21,7 +21,7 @@ appf.show_app_logo_sidebar(vertical_pos='top')
 appf.init_session_state(reset_lstm_skip_pred_button=False)
 
 ### load model(s) in session state (if not already loaded)
-appf.load_lstm_models()
+#appf.load_lstm_models()
 
 ### get required objects for LSTM ###
 #clubs, rearrange_list, scale_df, result_dict = appf.call_lstm_setup
@@ -95,7 +95,7 @@ with st.form(key="lstm_team_selection", clear_on_submit=False):
                 appf.aligned_text("vs.", align="center", bold=True)#, color="#FFD700")            
             with c8:
                 appf.show_team_logo(away_team_id)
-
+        """
         # create model tabs
         model_names = list(st.session_state['lstm_models'].keys())
         tabs = st.tabs(model_names)
@@ -105,7 +105,7 @@ with st.form(key="lstm_team_selection", clear_on_submit=False):
         for i, model_name in enumerate(model_names):
 
             ### prediction ### 
-
+            
             pred_df = lstm_pred.sequence_models(model=st.session_state['lstm_models'][model_name]['model'],
                                                 team1=home_team_id,
                                                 team2=away_team_id,
@@ -120,7 +120,7 @@ with st.form(key="lstm_team_selection", clear_on_submit=False):
                 with st.container():
                     # home win / draw / away win probabilities plot
                     st.plotly_chart(appf.get_outcome_prob_plot(outcome_preds[i], label_type=st.session_state['bar_label_type'], height=350), use_container_width=True, config={'displayModeBar': False})
-
+        """
             
 
 ### text below selection ###
