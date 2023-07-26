@@ -30,7 +30,7 @@ Feature generation and model training is implemented separately for two approach
 
 - ``models/trad_ml/feature_generation.py`` implements a flexible feature generation class which constructs feature sets from our base data set. Accepts a dictionary of variables in order to be able to conveniently optimize the feature generation parameters (see ``trad_ml/hyperparameter_optimization_<model type>.ipynb``). Notably, the main function of this class, ``generate_features()``, is able to produce either a full train/test split of features, or (when provided a home and away team ID) only a single feature row for predictions.
 - ``models/trad_ml/saved_models/`` is where the final six trained models are stored.
-- 
+  
 #### A neural net with Long Short-Term Memory architecture (LSTM)
 
 -``models/neural_net/`` contains modules to train and predict using the LSTM model. Also contains the final trained model.
