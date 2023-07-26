@@ -84,7 +84,7 @@ def lstm_setup():
         'passing_types_passtypes_fk', 'passing_types_passtypes_tb',
         'misc_aerialduels_won_perc', 'stad_capac', 'attendance', 'points', 'mean_points',
         'weekly_wages_eur', 'season_str',  'league_id', 'venue', 'team_id',
-        'opponent_id', 'last_results', 'oppon_points', 'oppon_mean_points', 'oppon_wages', 'schedule_round',
+        'last_results', 'oppon_points', 'oppon_mean_points', 'oppon_wages', 'schedule_round',
             'captain', 'formation', 'referee',  'match_id', 'schedule_date', 'schedule_time',
             'schedule_day', 'annual_wage_team', 'annual_wage_player_avg', "opponent_id"]
 
@@ -125,7 +125,19 @@ def sequence_models(model, team1, team2, clubs, rearrange_list, scale_df, result
                                 "away_win_prob": float(prediction[1])}, index = [0])
     return pd_to_return
 
-
+def sequence_models_goals(model, team1, team2, clubs, rearrange_list, scale_df, result_dict, venue_dict):
+    """
+    Prepares input for two arbitrary chosen teams and runs through LSTM
+    Input:  model, the LSTM
+            team1, team id of the home team
+            team2, team id of the opponents team
+            clubs, ictionary that contains a dataframe with every games for every club
+            rearrange_list, column list that allows for more flexibility with input variables
+            scale_df, dataframe containing all data
+            result_dict, dictionary for nominal encoding of results
+    Output: pd_to_return, dataframe with probs for home win, away win and draw
+    """
+    return None
 
 
 

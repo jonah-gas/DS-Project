@@ -720,6 +720,7 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs, venue_dict):
             df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
             df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
         
+        
         # create np array with zero to store data
         np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
         np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
@@ -804,6 +805,7 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs, venue_dict):
         else:
             df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
             df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
+        
         
         # create np array with zero to store data
         np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
@@ -892,7 +894,8 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs, venue_dict):
         else:
             df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
             df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
-            
+        
+        
         # create np array with zero to store data
         np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
         np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
@@ -980,7 +983,7 @@ def two_team_inputs(team1, team2, rearrange_list, scale_df, clubs, venue_dict):
         else:
             df_team1.loc[df_team1.iloc[-1].name,'last_results'] = 0
             df_team2.loc[df_team2.iloc[-1].name,'last_results'] = 0
-            
+        
         # create np array with zero to store data
         np_team1 = np.zeros([len(games)*2, df_team1_past.loc[:,"xg":"schedule_round"].shape[1]])
         np_team2 = np.zeros([len(games)*2, df_team2_past.loc[:,"xg":"schedule_round"].shape[1]])
