@@ -43,7 +43,7 @@ Feature generation and model training is implemented separately for two approach
 
 ## Secrets Management
 
-To prevent exposure of sensitive information (database server IP, passwords etc.), the ``db_utilities`` module relies on a config file being present in the following location: ``database_server/config/config.ini``. This ``config`` folder is not part of the repository! For access, please reach out to us directly.
+To prevent exposure of sensitive information (database server IP, passwords etc.), the ``db_utilities`` module relies on a config file being present in the following location: ``database_server/config/config.ini``. The ``database_server/config`` folder is not part of the online repository! For access, please reach out to us directly.
 
 For the web app we had to adjust to streamlit's secret management system, which requires entering the sensitive data directly on streamlit's platform. To run the app locally, a ``.streamlit/secrets.toml`` file is required. This file is also omitted from the repo. 
 
